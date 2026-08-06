@@ -59,6 +59,9 @@
       <div class="nav-item" :class="{ active: $route.path === '/guides' }" @click="$router.push('/guides')">
         <el-icon><Document /></el-icon><span>攻略</span>
       </div>
+      <div class="nav-item" :class="{ active: $route.path === '/profile' || $route.path === '/login' }" @click="handleMobileUserClick">
+        <el-icon><User /></el-icon><span>{{ authStore.isLoggedIn ? '我的' : '登录' }}</span>
+      </div>
     </div>
   </div>
 </template>
@@ -79,6 +82,14 @@ const showBottomNav = computed(() => {
   const hiddenPaths = ['/login', '/register']
   return !hiddenPaths.includes(route.path) && !route.path.startsWith('/admin')
 })
+
+function handleMobileUserClick() {
+  if (authStore.isLoggedIn) {
+    router.push('/profile')
+  } else {
+    router.push('/login')
+  }
+}
 
 function handleUserCommand(command) {
   if (command === 'logout') {
