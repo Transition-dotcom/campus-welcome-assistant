@@ -39,7 +39,7 @@
         <span>选课评价</span>
       </div>
       <div class="entry-item" @click="$router.push('/gpa')">
-        <el-icon :size="28" color="#67c23a"><Calculator /></el-icon>
+        <el-icon :size="28" color="#67c23a"><Operation /></el-icon>
         <span>GPA计算</span>
       </div>
       <div class="entry-item" @click="$router.push('/pois')">
