@@ -87,8 +87,13 @@
     </el-card>
 
     <!-- 安全提醒 -->
-    <el-card v-if="dashboard.pinned_tips?.length" class="safety-card">
-      <template #header><span style="color:#f56c6c">🛡️ 安全防线</span></template>
+    <el-card v-if="dashboard.pinned_tips?.length" class="safety-card" @click="$router.push('/safety')">
+      <template #header>
+        <div class="safety-header">
+          <span style="color:#f56c6c">🛡️ 安全防线</span>
+          <span class="view-more">查看详情 ›</span>
+        </div>
+      </template>
       <el-alert v-for="tip in dashboard.pinned_tips" :key="tip.id"
         :title="tip.title" type="warning" :closable="false" show-icon
         style="margin-bottom:8px" />
@@ -178,6 +183,9 @@ function formatTime(t) {
 .entry-item { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 16px 8px; background: #fff; border-radius: 12px; cursor: pointer; transition: transform 0.2s; font-size: 13px; color: #606266; }
 .entry-item:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
 .section-card { margin-bottom: 16px; }
+.safety-card { cursor: pointer; transition: box-shadow 0.2s; }
+.safety-card:hover { box-shadow: 0 4px 12px rgba(245,108,108,0.15); }
+.safety-header { display: flex; align-items: center; }
 .review-list { display: flex; flex-direction: column; gap: 12px; }
 .review-item { padding: 12px; background: #fafafa; border-radius: 8px; cursor: pointer; }
 .review-item:hover { background: #f0f2f5; }

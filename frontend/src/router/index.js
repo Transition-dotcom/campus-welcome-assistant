@@ -84,6 +84,11 @@ const routes = [
     component: () => import('@/views/guide/GuideDetailView.vue'),
   },
   {
+    path: '/safety',
+    name: 'Safety',
+    component: () => import('@/views/guide/SafetyTipsView.vue'),
+  },
+  {
     path: '/admin',
     component: () => import('@/views/admin/AdminLayout.vue'),
     meta: { requiresAuth: true, requiresAdmin: true },
