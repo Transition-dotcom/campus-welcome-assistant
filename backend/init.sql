@@ -210,9 +210,9 @@ CREATE TABLE IF NOT EXISTS `safety_tip` (
 -- 测试数据 - 东北大学软件学院定制版
 -- ============================================================
 
--- 管理员（密码：admin123，BCrypt 哈希 - 需通过注册接口生成正确哈希）
+-- 管理员（密码：admin123）
 INSERT INTO `user` (`nickname`, `password_hash`, `college`, `major`, `role`) VALUES
-('admin', '$2b$12$LJ3m4ys3LkBCVxJGq.5qSOZx3qMfJWv6rZ3Kq8qF9wJmqiZT3Rn5q', '软件学院', '软件工程', 'ADMIN');
+('admin', '$2b$12$YZJTjwbEnCCF5aAWVSr4UeHTXCnmWVHf1u34Ajhlf/Q21nwrq3CFm', '软件学院', '软件工程', 'ADMIN');
 
 
 -- ============================================================
