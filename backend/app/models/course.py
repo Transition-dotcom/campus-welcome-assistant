@@ -15,7 +15,7 @@ class Course(Base):
     teacher = Column(String(100), nullable=True, comment="授课教师")
     college = Column(String(100), nullable=True, comment="开课学院")
     category = Column(String(50), nullable=True, comment="课程类别")
-    credit = Column(DECIMAL(3, 1), nullable=True, comment="学分")
+    credit = Column(DECIMAL(4, 2), nullable=True, comment="学分")
     status = Column(Integer, nullable=False, default=1, comment="1正常 0下架")
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 

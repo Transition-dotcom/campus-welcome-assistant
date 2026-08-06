@@ -39,7 +39,7 @@ mysql -u root -proot --default-character-set=utf8mb4 < backend/init.sql
 ```
 
 > ⚠️ 必须加 `--default-character-set=utf8mb4`，否则含中文的 INSERT 会报编码错误。
-> 种子数据包含：20 门课程、8 个社团、14 个地标、攻略、任务、安全提示等。
+> 种子数据包含：25 门课程（依据软件学院培养方案）、8 个社团、14 个地标、攻略、任务、安全提示等。
 
 ### 2. 启动后端（端口 8080）
 

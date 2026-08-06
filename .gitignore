@@ -27,3 +27,6 @@ Thumbs.db
 # Database
 *.db
 *.sqlite3
+
+# Claude Code
+.claude/
