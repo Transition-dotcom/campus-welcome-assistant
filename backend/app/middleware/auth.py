@@ -2,7 +2,7 @@
 JWT 鉴权依赖。作为 FastAPI 的 Depends 注入到需要认证的路由中。
 """
 from __future__ import annotations
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from app.database import get_db
@@ -38,6 +38,20 @@ def get_current_user(
     user_id = int(payload.get("sub"))
     role = payload.get("role", "USER")
     return {"user_id": user_id, "role": role}
+
+
+def get_optional_user(request: Request, db: Session = Depends(get_db)):
+    """
+    可选鉴权：请求头带有效 Bearer Token 时返回用户信息，否则返回 None。
+    用于"未登录可访问、登录后个性化"的接口（如首页仪表盘的任务进度）。
+    """
+    auth = request.headers.get("Authorization")
+    if not auth or not auth.startswith("Bearer "):
+        return None
+    payload = decode_token(auth.split(" ", 1)[1])
+    if payload is None or payload.get("type") != "access":
+        return None
+    return {"user_id": int(payload.get("sub")), "role": payload.get("role", "USER")}
 
 
 def get_admin_user(

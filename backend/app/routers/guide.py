@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.middleware.auth import get_current_user
+from app.middleware.auth import get_current_user, get_optional_user
 from app.schemas.guide import GuideResponse, FreshmanTaskResponse, SafetyTipResponse, DashboardResponse, SearchResult
 from app.services import guide_service
 
@@ -62,9 +62,13 @@ def list_safety_tips(pinned_only: bool = False, db: Session = Depends(get_db)):
 # ──── 首页仪表盘 ────
 
 @router.get("/dashboard", response_model=DashboardResponse, summary="首页聚合")
-def dashboard(db: Session = Depends(get_db)):
-    """首页仪表盘：聚合任务进度、热门评价、近期活动、安全提醒。"""
-    return guide_service.get_dashboard(db)
+def dashboard(
+    current_user: dict | None = Depends(get_optional_user),
+    db: Session = Depends(get_db),
+):
+    """首页仪表盘：聚合任务进度、热门评价、近期活动、安全提醒。登录时任务进度按当前用户统计。"""
+    user_id = current_user["user_id"] if current_user else None
+    return guide_service.get_dashboard(db, user_id)
 
 
 # ──── 全局搜索 ────
