@@ -12,9 +12,9 @@ from app.routers import user, course, club, poi, guide, admin
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
-    title="大学萌新领航站 API",
-    description="面向大学新生的综合服务平台后端接口",
-    version="2.0.0",
+    title="东北大学软件学院 · 萌新领航站 API",
+    description="东北大学软件学院新生综合服务平台 - 基于浑南校区公开信息与软院培养方案",
+    version="2.1.0",
 )
 
 # CORS 配置

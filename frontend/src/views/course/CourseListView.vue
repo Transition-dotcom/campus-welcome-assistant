@@ -40,7 +40,7 @@ const page = ref(1)
 const pageSize = 10
 const total = ref(0)
 const filters = ref({ college: '', category: '' })
-const colleges = ['计算机学院', '数学学院', '经济管理学院', '外国语学院', '物理学院', '马克思主义学院']
+const colleges = ['软件学院', '理学院', '外国语学院', '马克思主义学院']
 const categories = ['通识必修', '通识选修', '专业必修', '专业选修']
 
 onMounted(() => fetchCourses())

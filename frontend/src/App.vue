@@ -4,7 +4,7 @@
     <el-header v-if="!isMobile || !showBottomNav" class="main-header">
       <div class="header-left" @click="$router.push('/')">
         <el-icon :size="24"><School /></el-icon>
-        <span class="app-title">萌新领航站</span>
+        <span class="app-title">NEU软院 · 萌新领航站</span>
       </div>
       <div class="header-right" v-if="!isMobile">
         <el-menu mode="horizontal" :default-active="activeMenu" :ellipsis="false" router>
