@@ -22,10 +22,11 @@
     </div>
 
     <!-- 任务进度卡 -->
-    <el-card v-if="authStore.isLoggedIn" class="progress-card">
+    <el-card v-if="authStore.isLoggedIn" class="progress-card" @click="$router.push('/tasks')">
       <div class="progress-header">
         <el-icon :size="20" color="#409eff"><Trophy /></el-icon>
         <span>新生任务进度</span>
+        <span class="view-more">查看详情 ›</span>
       </div>
       <el-progress :percentage="taskPercent" :stroke-width="14" :color="progressColor" />
       <p class="progress-text">已完成 {{ dashboard.task_progress?.completed || 0 }} / {{ dashboard.task_progress?.total || 0 }} 项</p>
@@ -168,8 +169,10 @@ function formatTime(t) {
 .search-dropdown { position: absolute; top: 42px; left: 0; right: 0; background: #fff; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.1); z-index: 200; max-height: 300px; overflow-y: auto; }
 .search-item { padding: 10px 16px; cursor: pointer; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #f0f0f0; }
 .search-item:hover { background: #f5f7fa; }
-.progress-card { margin-bottom: 16px; }
+.progress-card { margin-bottom: 16px; cursor: pointer; transition: box-shadow 0.2s; }
+.progress-card:hover { box-shadow: 0 4px 12px rgba(64,158,255,0.15); }
 .progress-header { display: flex; align-items: center; gap: 8px; font-weight: bold; margin-bottom: 12px; }
+.view-more { margin-left: auto; font-size: 13px; font-weight: normal; color: #409eff; }
 .progress-text { text-align: center; color: #909399; margin-top: 8px; font-size: 14px; }
 .quick-entries { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 16px; }
 .entry-item { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 16px 8px; background: #fff; border-radius: 12px; cursor: pointer; transition: transform 0.2s; font-size: 13px; color: #606266; }
