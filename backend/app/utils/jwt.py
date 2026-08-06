@@ -1,6 +1,7 @@
 """
 JWT Token 生成与验证工具。
 """
+from __future__ import annotations
 from datetime import datetime, timedelta
 from jose import jwt, JWTError
 from app.config import settings

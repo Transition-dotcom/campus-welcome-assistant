@@ -1,6 +1,7 @@
 """
 社团服务：社团 CRUD、活动管理。
 """
+from __future__ import annotations
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from fastapi import HTTPException, status

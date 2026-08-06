@@ -1,6 +1,7 @@
 """
 用户模块路由：注册、登录、个人信息。
 """
+from __future__ import annotations
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.database import get_db

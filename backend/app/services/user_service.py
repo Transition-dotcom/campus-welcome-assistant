@@ -1,6 +1,7 @@
 """
 用户服务：注册、登录、个人信息管理。
 """
+from __future__ import annotations
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 from app.models.user import User

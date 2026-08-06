@@ -1,6 +1,7 @@
 """
 JWT 鉴权依赖。作为 FastAPI 的 Depends 注入到需要认证的路由中。
 """
+from __future__ import annotations
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session

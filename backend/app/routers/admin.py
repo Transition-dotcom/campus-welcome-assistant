@@ -1,6 +1,7 @@
 """
 管理后台路由：所有接口需要 ADMIN 角色。
 """
+from __future__ import annotations
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from app.database import get_db

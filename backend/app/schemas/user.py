@@ -1,6 +1,7 @@
 """
 用户模块的 Pydantic 模型（请求体 & 响应体）。
 """
+from __future__ import annotations
 from datetime import datetime
 from pydantic import BaseModel, Field
 

@@ -1,6 +1,7 @@
 """
 课程评价路由：课程列表、评价 CRUD、点赞、评论、收藏、举报。
 """
+from __future__ import annotations
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from app.database import get_db

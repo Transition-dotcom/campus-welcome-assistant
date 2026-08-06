@@ -1,6 +1,7 @@
 """
 攻略与任务服务：攻略查询、任务管理、打卡、安全防线、首页聚合、全局搜索。
 """
+from __future__ import annotations
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from app.models.guide import Guide, FreshmanTask, SafetyTip

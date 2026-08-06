@@ -1,6 +1,7 @@
 """
 课程评价模块的 Pydantic 模型。
 """
+from __future__ import annotations
 from datetime import datetime
 from pydantic import BaseModel, Field
 

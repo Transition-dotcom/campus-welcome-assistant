@@ -1,6 +1,7 @@
 """
 课程评价服务：课程 CRUD、评价 CRUD、点赞、评论、收藏、举报。
 """
+from __future__ import annotations
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from fastapi import HTTPException, status

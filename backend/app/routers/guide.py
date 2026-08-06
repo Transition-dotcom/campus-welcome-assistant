@@ -1,6 +1,7 @@
 """
 攻略与任务路由：攻略、任务打卡、安全防线、首页、全局搜索。
 """
+from __future__ import annotations
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from app.database import get_db
