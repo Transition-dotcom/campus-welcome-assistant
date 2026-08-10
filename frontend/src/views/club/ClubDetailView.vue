@@ -2,12 +2,12 @@
   <div class="detail-page" v-loading="loading">
     <el-card v-if="club">
       <h3>{{ club.name }}</h3>
-      <el-tag type="success">{{ club.category }}</el-tag>
+      <el-tag v-for="t in club.category.split(',')" :key="t" type="success" style="margin-right:6px">{{ t }}</el-tag>
 
       <el-descriptions :column="1" border style="margin-top:16px">
-        <el-descriptions-item label="简介">{{ club.description || '暂无' }}</el-descriptions-item>
+        <el-descriptions-item label="简介"><span class="pre-line">{{ club.description || '暂无' }}</span></el-descriptions-item>
         <el-descriptions-item label="活动频率">{{ club.activity_frequency || '暂无' }}</el-descriptions-item>
-        <el-descriptions-item label="招新要求">{{ club.requirements || '暂无' }}</el-descriptions-item>
+        <el-descriptions-item label="招新要求"><span class="pre-line">{{ club.requirements || '暂无' }}</span></el-descriptions-item>
         <el-descriptions-item label="防坑指南">
           <span style="color:#e6a23c">{{ club.tips || '暂无' }}</span>
         </el-descriptions-item>
@@ -60,4 +60,5 @@ function formatTime(t) {
 <style scoped>
 .detail-page { max-width: 800px; margin: 0 auto; }
 .detail-page h3 { margin-bottom: 8px; }
+.pre-line { white-space: pre-line; }
 </style>

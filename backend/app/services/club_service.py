@@ -21,7 +21,8 @@ def get_clubs(
     q = db.query(Club).filter(Club.status == 1)
 
     if category:
-        q = q.filter(Club.category == category)
+        # 支持逗号分隔的多分类（如「学生组织,志愿公益」），任一分类命中即返回
+        q = q.filter(Club.category.like(f"%{category}%"))
     if keyword:
         q = q.filter(Club.name.contains(keyword))
 

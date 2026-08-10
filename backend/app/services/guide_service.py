@@ -168,8 +168,29 @@ def _serialize_events(events):
 
 # ──── 全局搜索 ────
 
+# 常见课程缩写 → 全称，用于搜索扩展（如「高数」→「高等数学」）
+COURSE_ALIASES = {
+    "高数": "高等数学",
+    "线代": "线性代数",
+    "计组": "计算机组成原理",
+    "软工": "软件工程",
+    "概率统计": "概率论与数理统计",
+}
+
+
+def _expand_keywords(keyword: str) -> list[str]:
+    """把关键词扩展成一组检索词：原词 + 常见缩写对应的全称。"""
+    terms = [keyword]
+    full = COURSE_ALIASES.get(keyword) or COURSE_ALIASES.get(keyword.strip())
+    if full:
+        terms.append(full)
+    return terms
+
+
 def search_all(db: Session, keyword: str, limit: int = 20) -> list[SearchResult]:
-    """跨模块搜索。"""
+    """跨模块搜索。支持常见课程缩写（如「高数」）扩展匹配全称。"""
+    from sqlalchemy import or_
+
     from app.models.course import Course
     from app.models.club import Club
     from app.models.poi import POI
@@ -178,26 +199,46 @@ def search_all(db: Session, keyword: str, limit: int = 20) -> list[SearchResult]
     if not keyword or len(keyword) < 2:
         return []
 
+    terms = _expand_keywords(keyword)
     results = []
-    kw = f"%{keyword}%"
 
-    # 搜课程
-    courses = db.query(Course).filter(Course.name.like(kw), Course.status == 1).limit(limit).all()
+    # 搜课程（按 id 去重，多个检索词可能命中同一条）
+    courses = (
+        db.query(Course)
+        .filter(or_(*[Course.name.like(f"%{t}%") for t in terms]), Course.status == 1)
+        .limit(limit)
+        .all()
+    )
     for c in courses:
         results.append(SearchResult(type="course", id=c.id, title=c.name))
 
     # 搜社团
-    clubs = db.query(Club).filter(Club.name.like(kw), Club.status == 1).limit(limit).all()
+    clubs = (
+        db.query(Club)
+        .filter(or_(*[Club.name.like(f"%{t}%") for t in terms]), Club.status == 1)
+        .limit(limit)
+        .all()
+    )
     for c in clubs:
         results.append(SearchResult(type="club", id=c.id, title=c.name))
 
     # 搜 POI
-    pois = db.query(POI).filter(POI.name.like(kw)).limit(limit).all()
+    pois = (
+        db.query(POI)
+        .filter(or_(*[POI.name.like(f"%{t}%") for t in terms]))
+        .limit(limit)
+        .all()
+    )
     for p in pois:
         results.append(SearchResult(type="poi", id=p.id, title=p.name))
 
     # 搜攻略
-    guides = db.query(Guide).filter(Guide.title.like(kw)).limit(limit).all()
+    guides = (
+        db.query(Guide)
+        .filter(or_(*[Guide.title.like(f"%{t}%") for t in terms]))
+        .limit(limit)
+        .all()
+    )
     for g in guides:
         results.append(SearchResult(type="guide", id=g.id, title=g.title))
 

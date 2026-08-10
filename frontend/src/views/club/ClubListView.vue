@@ -11,7 +11,9 @@
       <el-card v-for="c in clubs" :key="c.id" class="club-card" @click="$router.push(`/clubs/${c.id}`)">
         <div class="club-header">
           <h4>{{ c.name }}</h4>
-          <el-tag size="small">{{ c.category }}</el-tag>
+          <div>
+            <el-tag v-for="t in c.category.split(',')" :key="t" size="small" class="cat-tag">{{ t }}</el-tag>
+          </div>
         </div>
         <p class="club-desc">{{ c.description?.slice(0, 100) }}{{ c.description?.length > 100 ? '...' : '' }}</p>
         <div class="club-meta">
@@ -38,7 +40,7 @@ const pageSize = 10
 const total = ref(0)
 const activeCategory = ref('')
 const keyword = ref('')
-const categories = ['学术科技', '志愿公益', '文体艺术', '创新创业', '其他']
+const categories = ['学生组织', '学术科技', '志愿公益', '文体艺术', '创新创业', '其他']
 
 onMounted(() => fetchClubs())
 
@@ -63,6 +65,7 @@ async function fetchClubs() {
 .club-card:hover { border-color: #67c23a; }
 .club-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
 .club-header h4 { margin: 0; }
+.cat-tag { margin-left: 6px; }
 .club-desc { font-size: 14px; color: #606266; }
 .club-meta { display: flex; gap: 16px; font-size: 13px; color: #909399; margin-top: 6px; }
 </style>

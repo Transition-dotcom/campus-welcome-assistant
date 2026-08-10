@@ -143,8 +143,9 @@ watch(keyword, (val) => {
 })
 
 function doSearch() {
-  if (keyword.value.length >= 2) {
-    guideApi.search(keyword.value).then(r => searchResults.value = r)
+  const kw = keyword.value.trim()
+  if (kw.length >= 2) {
+    router.push({ path: '/search', query: { keyword: kw } })
   }
 }
 

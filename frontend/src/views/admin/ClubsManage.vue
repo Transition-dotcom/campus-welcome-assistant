@@ -19,7 +19,7 @@
     <el-dialog v-model="dialogVisible" :title="editingId ? '编辑社团' : '添加社团'" width="600px">
       <el-form :model="form" label-width="80px">
         <el-form-item label="名称"><el-input v-model="form.name" /></el-form-item>
-        <el-form-item label="类别"><el-select v-model="form.category"><el-option v-for="c in cats" :key="c" :label="c" :value="c" /></el-select></el-form-item>
+        <el-form-item label="类别"><el-select v-model="form.category" multiple placeholder="可多选"><el-option v-for="c in cats" :key="c" :label="c" :value="c" /></el-select></el-form-item>
         <el-form-item label="简介"><el-input v-model="form.description" type="textarea" :rows="2" /></el-form-item>
         <el-form-item label="活动频率"><el-input v-model="form.activity_frequency" /></el-form-item>
         <el-form-item label="招新要求"><el-input v-model="form.requirements" type="textarea" :rows="2" /></el-form-item>
@@ -43,8 +43,8 @@ const loading = ref(false)
 const clubs = ref([])
 const dialogVisible = ref(false)
 const editingId = ref(null)
-const form = reactive({ name: '', category: '学术科技', description: '', activity_frequency: '', requirements: '', tips: '', contact: '' })
-const cats = ['学术科技', '志愿公益', '文体艺术', '创新创业', '其他']
+const form = reactive({ name: '', category: [], description: '', activity_frequency: '', requirements: '', tips: '', contact: '' })
+const cats = ['学生组织', '学术科技', '志愿公益', '文体艺术', '创新创业', '其他']
 
 onMounted(() => fetchAll())
 async function fetchAll() {
@@ -56,17 +56,18 @@ async function fetchAll() {
 function openDialog(row) {
   if (row) {
     editingId.value = row.id
-    Object.assign(form, { name: row.name, category: row.category, description: row.description || '', activity_frequency: row.activity_frequency || '', requirements: row.requirements || '', tips: row.tips || '', contact: row.contact || '' })
+    Object.assign(form, { name: row.name, category: row.category ? row.category.split(',') : [], description: row.description || '', activity_frequency: row.activity_frequency || '', requirements: row.requirements || '', tips: row.tips || '', contact: row.contact || '' })
   } else {
     editingId.value = null
-    Object.assign(form, { name: '', category: '学术科技', description: '', activity_frequency: '', requirements: '', tips: '', contact: '' })
+    Object.assign(form, { name: '', category: [], description: '', activity_frequency: '', requirements: '', tips: '', contact: '' })
   }
   dialogVisible.value = true
 }
 
 async function save() {
   try {
-    editingId.value ? await adminApi.updateClub(editingId.value, form) : await adminApi.createClub(form)
+    const payload = { ...form, category: form.category.join(',') }
+    editingId.value ? await adminApi.updateClub(editingId.value, payload) : await adminApi.createClub(payload)
     ElMessage.success('保存成功')
     dialogVisible.value = false
     await fetchAll()
