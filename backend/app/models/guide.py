@@ -2,7 +2,7 @@
 攻略与任务相关模型：guide, freshman_task, safety_tip
 """
 from datetime import datetime
-from sqlalchemy import Column, BigInteger, String, Text, Integer, DateTime, JSON
+from sqlalchemy import Column, BigInteger, String, Text, Integer, DateTime, JSON, Index
 from sqlalchemy.orm import relationship
 from app.database import Base
 
