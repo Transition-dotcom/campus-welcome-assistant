@@ -55,6 +55,7 @@ import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { guideApi } from '@/api'
 import { ElMessage } from 'element-plus'
+import { Search, ArrowRight } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()

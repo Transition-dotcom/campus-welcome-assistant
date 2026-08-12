@@ -75,6 +75,7 @@ import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { courseApi } from '@/api'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { CaretTop, ChatDotRound, Star } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const authStore = useAuthStore()

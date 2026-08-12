@@ -21,6 +21,7 @@
 
 <script setup>
 import { useRoute } from 'vue-router'
+import { Notebook, Flag, LocationFilled, Warning, User, HomeFilled } from '@element-plus/icons-vue'
 const route = useRoute()
 </script>
 

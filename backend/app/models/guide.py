@@ -16,6 +16,11 @@ class Guide(Base):
     content = Column(JSON, nullable=True, comment="步骤内容（JSON数组）")
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
+    __table_args__ = (
+        Index("idx_guide_category", "category"),
+        Index("idx_guide_title", "title"),  # 搜索
+    )
+
 
 class FreshmanTask(Base):
     __tablename__ = "freshman_task"
@@ -27,6 +32,10 @@ class FreshmanTask(Base):
     sort_order = Column(Integer, nullable=False, default=0, comment="排序")
     badge_level = Column(String(20), nullable=True, comment="关联勋章等级")
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    __table_args__ = (
+        Index("idx_task_sort", "sort_order"),
+    )
 
     checkins = relationship("UserCheckin", back_populates="task", cascade="all, delete-orphan")
 
@@ -41,3 +50,7 @@ class SafetyTip(Base):
     sort_order = Column(Integer, nullable=False, default=0)
     is_pinned = Column(Integer, nullable=False, default=0, comment="是否置顶")
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    __table_args__ = (
+        Index("idx_safety_pinned_sort", "is_pinned", "sort_order"),
+    )

@@ -24,6 +24,7 @@ class POI(Base):
 
     __table_args__ = (
         Index("idx_poi_category", "category"),
+        Index("idx_poi_name", "name"),  # 搜索
     )
 
     corrections = relationship("POICorrection", back_populates="poi", cascade="all, delete-orphan")
@@ -55,5 +56,9 @@ class POICorrection(Base):
     content = Column(Text, nullable=False, comment="纠错内容")
     status = Column(String(20), nullable=False, default="pending", comment="pending/resolved")
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    __table_args__ = (
+        Index("idx_correction_status", "status"),
+    )
 
     poi = relationship("POI", back_populates="corrections")

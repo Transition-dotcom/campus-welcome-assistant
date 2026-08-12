@@ -45,6 +45,7 @@ class CourseReview(Base):
         Index("idx_review_course_id", "course_id"),
         Index("idx_review_user_id", "user_id"),
         Index("idx_review_created_at", "created_at"),
+        Index("idx_review_hot", "status", "like_count", "id"),  # 热门评价排序
     )
 
     course = relationship("Course", back_populates="reviews")
@@ -82,6 +83,7 @@ class ReviewLike(Base):
 
     __table_args__ = (
         UniqueConstraint("review_id", "user_id", name="uk_review_user"),
+        Index("idx_like_user_id", "user_id"),
     )
 
     review = relationship("CourseReview", back_populates="likes")
@@ -96,5 +98,9 @@ class ReviewReport(Base):
     reason = Column(String(500), nullable=False, comment="举报原因")
     status = Column(String(20), nullable=False, default="pending", comment="pending/resolved/dismissed")
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    __table_args__ = (
+        Index("idx_report_status", "status"),
+    )
 
     review = relationship("CourseReview", back_populates="reports")

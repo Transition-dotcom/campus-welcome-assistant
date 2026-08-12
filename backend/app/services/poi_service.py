@@ -82,11 +82,21 @@ def get_routes(db: Session, poi_id: int | None = None) -> list[POIRouteResponse]
         q = q.filter(POIRoute.from_poi_id == poi_id)
 
     routes = q.all()
+
+    # 批量查询所有涉及的 POI 名称
+    poi_ids = set()
+    for r in routes:
+        poi_ids.add(r.from_poi_id)
+        poi_ids.add(r.to_poi_id)
+    pois_map: dict[int, POI] = {}
+    if poi_ids:
+        pois_map = {p.id: p for p in db.query(POI).filter(POI.id.in_(poi_ids)).all()}
+
     result = []
     for r in routes:
         resp = POIRouteResponse.model_validate(r)
-        from_poi = db.query(POI).filter(POI.id == r.from_poi_id).first()
-        to_poi = db.query(POI).filter(POI.id == r.to_poi_id).first()
+        from_poi = pois_map.get(r.from_poi_id)
+        to_poi = pois_map.get(r.to_poi_id)
         resp.from_poi_name = from_poi.name if from_poi else None
         resp.to_poi_name = to_poi.name if to_poi else None
         result.append(resp)

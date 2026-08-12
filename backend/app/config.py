@@ -12,8 +12,8 @@ class Settings(BaseSettings):
     db_password: str = "root"
     db_name: str = "campus_nav"
 
-    # JWT
-    jwt_secret: str = "campus-nav-jwt-secret-key-change-in-production-2025"
+    # JWT — 生产环境必须通过环境变量 JWT_SECRET 设置强随机密钥
+    jwt_secret: str = ""
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 120        # 2 小时
     refresh_token_expire_days: int = 7             # 7 天

@@ -106,7 +106,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { guideApi } from '@/api'
-import { ElMessage } from 'element-plus'
+import { Search, Trophy, Notebook, Operation, LocationFilled, Flag, Document } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -132,13 +132,23 @@ onMounted(async () => {
 })
 
 let searchTimer = null
+let abortController = null
 watch(keyword, (val) => {
   clearTimeout(searchTimer)
   if (val.length < 2) { searchResults.value = []; return }
+
+  // 取消前一个未完成的请求，避免"先发后到"结果错乱
+  if (abortController) abortController.abort()
+  abortController = new AbortController()
+
   searchTimer = setTimeout(async () => {
     try {
-      searchResults.value = await guideApi.search(val)
-    } catch { searchResults.value = [] }
+      searchResults.value = await guideApi.search(val, abortController.signal)
+    } catch (err) {
+      if (err.name !== 'CanceledError' && err.code !== 'ERR_CANCELED') {
+        searchResults.value = []
+      }
+    }
   }, 300)
 })
 

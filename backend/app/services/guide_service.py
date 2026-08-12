@@ -105,16 +105,23 @@ def get_safety_tips(db: Session, pinned_only: bool = False) -> list[SafetyTipRes
 
 def get_dashboard(db: Session, user_id: int | None = None) -> DashboardResponse:
     """聚合首页数据。"""
+    from sqlalchemy.orm import joinedload
+
     # 任务进度
     total_tasks = db.query(FreshmanTask).count()
     completed_tasks = 0
     if user_id:
         completed_tasks = db.query(UserCheckin).filter(UserCheckin.user_id == user_id).count()
 
-    # 热门评价（点赞最多，取 3 条）
-    hot = db.query(CourseReview).filter(CourseReview.status == 1).order_by(
-        desc(CourseReview.like_count), desc(CourseReview.id)
-    ).limit(3).all()
+    # 热门评价（点赞最多，取 3 条）— 预加载 user 避免 N+1
+    hot = (
+        db.query(CourseReview)
+        .filter(CourseReview.status == 1)
+        .options(joinedload(CourseReview.user))
+        .order_by(desc(CourseReview.like_count), desc(CourseReview.id))
+        .limit(3)
+        .all()
+    )
 
     # 近期社团活动（未来 3 条）
     upcoming = db.query(ClubEvent).filter(ClubEvent.event_time >= datetime.utcnow()).order_by(

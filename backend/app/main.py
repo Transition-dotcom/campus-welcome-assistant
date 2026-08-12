@@ -1,12 +1,23 @@
 """
 FastAPI 应用入口。启动：uvicorn app.main:app --reload --port 8080
 """
+import secrets
+import warnings
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database import engine, Base
 from app.models import *  # noqa: 确保所有模型被导入，Base.metadata 包含全部表
 from app.routers import user, course, club, poi, guide, admin
+
+# JWT 密钥安全检查：生产环境必须通过环境变量设置
+if not settings.jwt_secret:
+    settings.jwt_secret = secrets.token_urlsafe(32)
+    warnings.warn(
+        "⚠ JWT_SECRET 未设置！已自动生成临时密钥。"
+        "生产环境请通过环境变量 JWT_SECRET 设置固定强随机密钥。",
+        RuntimeWarning,
+    )
 
 # 自动建表（生产环境应使用 Alembic 迁移）
 Base.metadata.create_all(bind=engine)

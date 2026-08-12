@@ -57,7 +57,8 @@ CREATE TABLE IF NOT EXISTS `course_review` (
     PRIMARY KEY (`id`),
     INDEX `idx_review_course_id` (`course_id`),
     INDEX `idx_review_user_id` (`user_id`),
-    INDEX `idx_review_created_at` (`created_at`)
+    INDEX `idx_review_created_at` (`created_at`),
+    INDEX `idx_review_hot` (`status`, `like_count`, `id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='课程评价表';
 
 CREATE TABLE IF NOT EXISTS `review_comment` (
@@ -77,7 +78,8 @@ CREATE TABLE IF NOT EXISTS `review_like` (
     `user_id` BIGINT NOT NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_review_user` (`review_id`, `user_id`)
+    UNIQUE KEY `uk_review_user` (`review_id`, `user_id`),
+    INDEX `idx_like_user_id` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='点赞记录表';
 
 CREATE TABLE IF NOT EXISTS `review_report` (
@@ -87,7 +89,8 @@ CREATE TABLE IF NOT EXISTS `review_report` (
     `reason` VARCHAR(500) NOT NULL,
     `status` VARCHAR(20) NOT NULL DEFAULT 'pending',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (`id`)
+    PRIMARY KEY (`id`),
+    INDEX `idx_report_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='举报记录表';
 
 CREATE TABLE IF NOT EXISTS `user_favorite` (
@@ -105,7 +108,8 @@ CREATE TABLE IF NOT EXISTS `user_checkin` (
     `task_id` BIGINT NOT NULL,
     `checked_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_user_task` (`user_id`, `task_id`)
+    UNIQUE KEY `uk_user_task` (`user_id`, `task_id`),
+    INDEX `idx_checkin_user_id` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户打卡表';
 
 CREATE TABLE IF NOT EXISTS `club` (
@@ -151,7 +155,8 @@ CREATE TABLE IF NOT EXISTS `poi` (
     `lng` DECIMAL(10,7) DEFAULT NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    INDEX `idx_poi_category` (`category`)
+    INDEX `idx_poi_category` (`category`),
+    INDEX `idx_poi_name` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='校园地标表';
 
 CREATE TABLE IF NOT EXISTS `poi_route` (
@@ -171,7 +176,8 @@ CREATE TABLE IF NOT EXISTS `poi_correction` (
     `content` TEXT NOT NULL,
     `status` VARCHAR(20) NOT NULL DEFAULT 'pending',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (`id`)
+    PRIMARY KEY (`id`),
+    INDEX `idx_correction_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='纠错记录表';
 
 CREATE TABLE IF NOT EXISTS `guide` (
@@ -180,7 +186,9 @@ CREATE TABLE IF NOT EXISTS `guide` (
     `category` VARCHAR(50) NOT NULL,
     `content` JSON DEFAULT NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (`id`)
+    PRIMARY KEY (`id`),
+    INDEX `idx_guide_category` (`category`),
+    INDEX `idx_guide_title` (`title`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='攻略表';
 
 CREATE TABLE IF NOT EXISTS `freshman_task` (
@@ -191,7 +199,8 @@ CREATE TABLE IF NOT EXISTS `freshman_task` (
     `sort_order` INT NOT NULL DEFAULT 0,
     `badge_level` VARCHAR(20) DEFAULT NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (`id`)
+    PRIMARY KEY (`id`),
+    INDEX `idx_task_sort` (`sort_order`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='新生任务模板表';
 
 CREATE TABLE IF NOT EXISTS `safety_tip` (
@@ -202,7 +211,8 @@ CREATE TABLE IF NOT EXISTS `safety_tip` (
     `sort_order` INT NOT NULL DEFAULT 0,
     `is_pinned` INT NOT NULL DEFAULT 0,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (`id`)
+    PRIMARY KEY (`id`),
+    INDEX `idx_safety_pinned_sort` (`is_pinned`, `sort_order`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='安全防线表';
 
 

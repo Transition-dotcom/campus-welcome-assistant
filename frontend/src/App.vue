@@ -71,6 +71,7 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { ElMessage } from 'element-plus'
+import { School, HomeFilled, Notebook, Flag, LocationFilled, Document, User } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()

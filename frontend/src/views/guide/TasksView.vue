@@ -40,6 +40,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { guideApi } from '@/api'
 import { ElMessage } from 'element-plus'
+import { Trophy } from '@element-plus/icons-vue'
 
 const loading = ref(false)
 const tasks = ref([])

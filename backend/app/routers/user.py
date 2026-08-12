@@ -2,10 +2,11 @@
 用户模块路由：注册、登录、个人信息。
 """
 from __future__ import annotations
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.middleware.auth import get_current_user
+from app.middleware.rate_limit import rate_limit_auth
 from app.schemas.user import (
     RegisterRequest, LoginRequest, RefreshTokenRequest,
     UpdateProfileRequest, LoginResponse, TokenResponse, UserProfile,
@@ -16,13 +17,21 @@ router = APIRouter(prefix="/api/user", tags=["用户中心"])
 
 
 @router.post("/register", response_model=LoginResponse, summary="用户注册")
-def register(req: RegisterRequest, db: Session = Depends(get_db)):
+def register(
+    req: RegisterRequest,
+    db: Session = Depends(get_db),
+    _: None = Depends(rate_limit_auth),
+):
     """注册新用户，成功后直接返回 token（注册即登录）。"""
     return user_service.register(db, req)
 
 
 @router.post("/login", response_model=LoginResponse, summary="用户登录")
-def login(req: LoginRequest, db: Session = Depends(get_db)):
+def login(
+    req: LoginRequest,
+    db: Session = Depends(get_db),
+    _: None = Depends(rate_limit_auth),
+):
     """使用昵称和密码登录，返回 access_token 和 refresh_token。"""
     return user_service.login(db, req)
 

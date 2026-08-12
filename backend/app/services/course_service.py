@@ -24,6 +24,8 @@ def get_courses(
     category: str | None = None,
 ) -> PageResponse:
     """分页查询课程列表，支持按学院和类别筛选。"""
+    from sqlalchemy import func
+
     q = db.query(Course).filter(Course.status == 1)
 
     if college:
@@ -34,14 +36,22 @@ def get_courses(
     total = q.count()
     courses = q.order_by(desc(Course.id)).offset((page - 1) * page_size).limit(page_size).all()
 
-    # 填充每个课程的评价数
+    # 批量查询评价数（一次 GROUP BY 替代循环 COUNT）
+    course_ids = [c.id for c in courses]
+    review_counts: dict[int, int] = {}
+    if course_ids:
+        rows = (
+            db.query(CourseReview.course_id, func.count(CourseReview.id))
+            .filter(CourseReview.course_id.in_(course_ids), CourseReview.status == 1)
+            .group_by(CourseReview.course_id)
+            .all()
+        )
+        review_counts = {row[0]: row[1] for row in rows}
+
     items = []
     for c in courses:
-        review_count = db.query(CourseReview).filter(
-            CourseReview.course_id == c.id, CourseReview.status == 1
-        ).count()
         resp = CourseResponse.model_validate(c)
-        resp.review_count = review_count
+        resp.review_count = review_counts.get(c.id, 0)
         items.append(resp)
 
     total_pages = (total + page_size - 1) // page_size
@@ -117,7 +127,8 @@ def get_reviews(
     total = q.count()
     reviews = q.offset((page - 1) * page_size).limit(page_size).all()
 
-    items = [_build_review_response(db, r, current_user_id) for r in reviews]
+    # 批量查询用户昵称、点赞状态、收藏状态
+    items = _build_review_responses_batch(db, reviews, current_user_id)
     total_pages = (total + page_size - 1) // page_size
     return PageResponse(items=items, total=total, page=page, page_size=page_size, total_pages=total_pages)
 
@@ -143,29 +154,56 @@ def create_review(db: Session, course_id: int, user_id: int, req: ReviewCreate) 
 
 
 def _build_review_response(db: Session, review: CourseReview, current_user_id: int | None) -> ReviewResponse:
-    """构建评价响应（填充昵称、是否已点赞、是否已收藏）。"""
-    resp = ReviewResponse.model_validate(review)
+    """构建单个评价响应（用于创建评价等单个场景）。"""
+    return _build_review_responses_batch(db, [review], current_user_id)[0]
 
-    # 匿名处理
-    if review.is_anonymous:
-        resp.nickname = "匿名用户"
-    else:
-        user = db.query(User).filter(User.id == review.user_id).first()
-        resp.nickname = user.nickname if user else "未知用户"
 
-    # 当前用户是否已点赞
+def _build_review_responses_batch(
+    db: Session, reviews: list[CourseReview], current_user_id: int | None
+) -> list[ReviewResponse]:
+    """批量构建评价响应：一次查询用户昵称、点赞状态、收藏状态，避免 N+1。"""
+    if not reviews:
+        return []
+
+    # 收集所有需要查的用户 ID
+    user_ids = list({r.user_id for r in reviews if not r.is_anonymous})
+    users_map: dict[int, User] = {}
+    if user_ids:
+        users_map = {u.id: u for u in db.query(User).filter(User.id.in_(user_ids)).all()}
+
+    # 批量查询当前用户的点赞和收藏状态
+    review_ids = [r.id for r in reviews]
+    liked_ids: set[int] = set()
+    favorited_ids: set[int] = set()
     if current_user_id:
-        liked = db.query(ReviewLike).filter(
-            ReviewLike.review_id == review.id, ReviewLike.user_id == current_user_id
-        ).first()
-        resp.is_liked = liked is not None
+        liked_ids = {
+            lk.review_id
+            for lk in db.query(ReviewLike).filter(
+                ReviewLike.review_id.in_(review_ids), ReviewLike.user_id == current_user_id
+            ).all()
+        }
+        favorited_ids = {
+            fv.course_review_id
+            for fv in db.query(UserFavorite).filter(
+                UserFavorite.course_review_id.in_(review_ids), UserFavorite.user_id == current_user_id
+            ).all()
+        }
 
-        favorited = db.query(UserFavorite).filter(
-            UserFavorite.course_review_id == review.id, UserFavorite.user_id == current_user_id
-        ).first()
-        resp.is_favorited = favorited is not None
+    items = []
+    for review in reviews:
+        resp = ReviewResponse.model_validate(review)
 
-    return resp
+        if review.is_anonymous:
+            resp.nickname = "匿名用户"
+        else:
+            user = users_map.get(review.user_id)
+            resp.nickname = user.nickname if user else "未知用户"
+
+        resp.is_liked = review.id in liked_ids
+        resp.is_favorited = review.id in favorited_ids
+        items.append(resp)
+
+    return items
 
 
 # ──── 点赞（幂等：点赞 ↔ 取消点赞） ────
@@ -203,10 +241,16 @@ def get_comments(db: Session, review_id: int, page: int = 1, page_size: int = 20
     total = q.count()
     comments = q.order_by(ReviewComment.id).offset((page - 1) * page_size).limit(page_size).all()
 
+    # 批量查询评论者昵称
+    user_ids = list({c.user_id for c in comments})
+    users_map: dict[int, User] = {}
+    if user_ids:
+        users_map = {u.id: u for u in db.query(User).filter(User.id.in_(user_ids)).all()}
+
     items = []
     for c in comments:
         resp = CommentResponse.model_validate(c)
-        user = db.query(User).filter(User.id == c.user_id).first()
+        user = users_map.get(c.user_id)
         resp.nickname = user.nickname if user else "未知用户"
         items.append(resp)
 
@@ -261,11 +305,18 @@ def get_my_favorites(db: Session, user_id: int, page: int = 1, page_size: int = 
     total = q.count()
     favs = q.offset((page - 1) * page_size).limit(page_size).all()
 
-    items = []
-    for fav in favs:
-        review = db.query(CourseReview).filter(CourseReview.id == fav.course_review_id).first()
-        if review and review.status == 1:
-            items.append(_build_review_response(db, review, user_id))
+    # 批量加载关联的 review
+    review_ids = [fav.course_review_id for fav in favs]
+    reviews_map: dict[int, CourseReview] = {}
+    if review_ids:
+        reviews = db.query(CourseReview).filter(
+            CourseReview.id.in_(review_ids), CourseReview.status == 1
+        ).all()
+        reviews_map = {r.id: r for r in reviews}
+
+    # 按 fav 顺序组装，保持排序
+    ordered_reviews = [reviews_map[fav.course_review_id] for fav in favs if fav.course_review_id in reviews_map]
+    items = _build_review_responses_batch(db, ordered_reviews, user_id)
 
     total_pages = (total + page_size - 1) // page_size
     return PageResponse(items=items, total=total, page=page, page_size=page_size, total_pages=total_pages)

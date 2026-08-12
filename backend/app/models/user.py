@@ -55,6 +55,7 @@ class UserCheckin(Base):
 
     __table_args__ = (
         UniqueConstraint("user_id", "task_id", name="uk_user_task"),
+        Index("idx_checkin_user_id", "user_id"),
     )
 
     user = relationship("User", back_populates="checkins")
