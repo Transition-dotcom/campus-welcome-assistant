@@ -64,6 +64,16 @@ npm run dev
 
 浏览器访问 **http://localhost:5173**（Vite 已配置 `/api` 代理到后端 8080）。
 
+### 4. 运行测试
+
+```bash
+# 单元 + 集成测试（无需 MySQL，SQLite 内存库，92 个用例）
+cd backend && python3 -m pytest tests/
+
+# 全流程 E2E 冒烟测试（需 MySQL 已初始化 + 后端已启动，52 项断言）
+bash scripts/e2e_smoke.sh
+```
+
 ### 默认账号
 
 | 角色 | 账号 | 密码 |
@@ -73,6 +83,17 @@ npm run dev
 普通用户可自行注册。
 
 ## 📝 变更记录
+
+### 2026-08-13 安全加固 & 功能补齐 & 全流程测试
+
+- **fix**: 匿名评价不再泄漏 `user_id`；鉴权每请求回查数据库（禁用用户/降权管理员立即失效）
+- **feat**: refresh token 轮换撤销（`token_version` 版本号），旧 refresh token 一经使用即作废
+- **feat**: 管理后台补齐举报审核、攻略管理、任务管理、用户禁用（前后端契约一致）
+- **fix**: 种子社团活动改用相对时间（`DATE_ADD(NOW(), INTERVAL n DAY)`），招新日历永久不过期
+- **fix**: `init.sql` 可重复执行（导入前自动重建数据库，重置为干净演示数据）
+- **perf**: element-plus 按需引入，最大 chunk 1073KB → 344KB（gzip 106KB）
+- **docs**: 补齐数据库设计 / API 接口 / 部署说明 / 用户使用手册（`docs/`）
+- **test**: 新增 `tests/test_fixes.py`、`test_refresh_rotation.py`（92 用例全绿）；`scripts/e2e_smoke.sh` 真实环境全流程冒烟测试 52 项全通过
 
 ### 2026-08 环境准备 & 修复
 

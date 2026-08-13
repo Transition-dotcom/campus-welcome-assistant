@@ -2,9 +2,11 @@
 -- 大学萌新领航站 - 东北大学软件学院定制版
 -- 基于东北大学浑南校区公开信息 + 软件学院培养方案
 -- 使用方法：mysql -u root -proot < init.sql
+-- 可重复执行：每次导入都会重建数据库，重置为干净的演示数据
 -- ============================================================
 
-CREATE DATABASE IF NOT EXISTS campus_nav DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+DROP DATABASE IF EXISTS campus_nav;
+CREATE DATABASE campus_nav DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE campus_nav;
 
 -- ============================================================
