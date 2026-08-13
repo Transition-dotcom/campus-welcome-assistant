@@ -18,10 +18,11 @@ CREATE TABLE IF NOT EXISTS `user` (
     `password_hash` VARCHAR(255) NOT NULL,
     `college` VARCHAR(100) DEFAULT NULL COMMENT '学院',
     `major` VARCHAR(100) DEFAULT NULL COMMENT '专业',
-    `grade` VARCHAR(10) DEFAULT NULL COMMENT '入学年份',
+    `grade` VARCHAR(20) DEFAULT NULL COMMENT '入学年份',
     `avatar_url` VARCHAR(500) DEFAULT NULL,
     `role` VARCHAR(20) NOT NULL DEFAULT 'USER',
     `status` INT NOT NULL DEFAULT 1,
+    `token_version` INT NOT NULL DEFAULT 0 COMMENT 'token版本号，刷新时+1，旧token失效',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
@@ -69,7 +70,8 @@ CREATE TABLE IF NOT EXISTS `review_comment` (
     `content` TEXT NOT NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    INDEX `idx_comment_review_id` (`review_id`)
+    INDEX `idx_comment_review_id` (`review_id`),
+    INDEX `idx_comment_parent_id` (`parent_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='评价评论表';
 
 CREATE TABLE IF NOT EXISTS `review_like` (
@@ -99,7 +101,8 @@ CREATE TABLE IF NOT EXISTS `user_favorite` (
     `course_review_id` BIGINT NOT NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_user_review` (`user_id`, `course_review_id`)
+    UNIQUE KEY `uk_user_review` (`user_id`, `course_review_id`),
+    INDEX `idx_favorite_review_id` (`course_review_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户收藏表';
 
 CREATE TABLE IF NOT EXISTS `user_checkin` (
@@ -109,7 +112,8 @@ CREATE TABLE IF NOT EXISTS `user_checkin` (
     `checked_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_user_task` (`user_id`, `task_id`),
-    INDEX `idx_checkin_user_id` (`user_id`)
+    INDEX `idx_checkin_user_id` (`user_id`),
+    INDEX `idx_checkin_task_id` (`task_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户打卡表';
 
 CREATE TABLE IF NOT EXISTS `club` (
@@ -153,6 +157,7 @@ CREATE TABLE IF NOT EXISTS `poi` (
     `tips` TEXT,
     `lat` DECIMAL(10,7) DEFAULT NULL,
     `lng` DECIMAL(10,7) DEFAULT NULL,
+    `status` INT NOT NULL DEFAULT 1 COMMENT '1正常 0下架（软删除）',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     INDEX `idx_poi_category` (`category`),
@@ -184,6 +189,7 @@ CREATE TABLE IF NOT EXISTS `guide` (
     `id` BIGINT NOT NULL AUTO_INCREMENT,
     `title` VARCHAR(200) NOT NULL,
     `category` VARCHAR(50) NOT NULL,
+    `summary` VARCHAR(500) DEFAULT NULL,
     `content` JSON DEFAULT NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
@@ -271,17 +277,17 @@ INSERT INTO `course` (`id`, `name`, `teacher`, `college`, `category`, `credit`) 
 -- 课程评价 - 模拟老生经验
 -- ============================================================
 
-INSERT INTO `course_review` (`course_id`, `user_id`, `is_anonymous`, `difficulty_rating`, `score_rating`, `content`, `like_count`) VALUES
-(7, 1, 0, 2, 5, '程序设计基础是软院的第一门编程课，从零开始完全没问题，每节课都有上机练习。期末是大作业，做个小游戏或者管理系统。强烈推荐大一上学期认真学，后续所有课程都要用编程基础。', 25),
-(7, 1, 1, 3, 4, '虽然是入门课但内容不少，函数和结构体部分要好好理解。老师会提供office hour答疑，建议多去。', 10),
-(9, 1, 0, 4, 4, '数据结构与算法是软院学分最重的课之一。老师要求比较严格，但讲得很清楚。实验课占40%，LeetCode刷题很有帮助。期末笔试有一定难度，红黑树和B+树重点看。', 20),
-(9, 1, 1, 5, 3, '数据结构真的好难，期末前通宵复习。但是学好了对后面的课程和找实习帮助巨大，咬牙坚持吧。', 8),
-(13, 1, 0, 3, 4, '大数据库课上得很有条理，SQL语句和ER图设计是重点。课程设计用MySQL做一个完整的数据库应用，建议找好队友。', 15),
-(14, 1, 0, 3, 5, '软件工程课绝对是软院最有价值的课之一！老师会模拟真实项目流程，从需求分析到测试交付完整走一遍。小组合作很重要，选对组员成功一半。', 18),
-(10, 1, 1, 5, 3, '计组真的硬核，从数电到CPU设计，实验课写Verilog写到怀疑人生。不过学完对整个计算机体系理解会上一个台阶。', 12),
-(11, 1, 0, 4, 4, '操作系统课内容量大，进程管理、内存管理、文件系统三大块。老师讲课幽默风趣，PintOS实验是亮点，能动手实现一个迷你OS。', 14),
-(1, 1, 1, 3, 4, '高等数学是学分最高的课，5个学分！老师讲课节奏比较快，建议课前看书预习。期中考试计算为主，期末偏证明。成绩公式：(平时30%+期中30%+期末40%)', 20),
-(3, 1, 0, 3, 4, '线性代数对于后续机器学习方向很重要。老师要求比较严，矩阵运算和特征值要练熟。考试题型比较固定，刷往年题有效。', 13);
+INSERT INTO `course_review` (`course_id`, `user_id`, `is_anonymous`, `difficulty_rating`, `score_rating`, `content`, `like_count`, `created_at`) VALUES
+(7, 1, 0, 2, 5, '程序设计基础是软院的第一门编程课，从零开始完全没问题，每节课都有上机练习。期末是大作业，做个小游戏或者管理系统。强烈推荐大一上学期认真学，后续所有课程都要用编程基础。', 25, NOW() - INTERVAL 15 DAY),
+(7, 1, 1, 3, 4, '虽然是入门课但内容不少，函数和结构体部分要好好理解。老师会提供office hour答疑，建议多去。', 10, NOW() - INTERVAL 12 DAY),
+(9, 1, 0, 4, 4, '数据结构与算法是软院学分最重的课之一。老师要求比较严格，但讲得很清楚。实验课占40%，LeetCode刷题很有帮助。期末笔试有一定难度，红黑树和B+树重点看。', 20, NOW() - INTERVAL 13 DAY),
+(9, 1, 1, 5, 3, '数据结构真的好难，期末前通宵复习。但是学好了对后面的课程和找实习帮助巨大，咬牙坚持吧。', 8, NOW() - INTERVAL 10 DAY),
+(13, 1, 0, 3, 4, '大数据库课上得很有条理，SQL语句和ER图设计是重点。课程设计用MySQL做一个完整的数据库应用，建议找好队友。', 15, NOW() - INTERVAL 9 DAY),
+(14, 1, 0, 3, 5, '软件工程课绝对是软院最有价值的课之一！老师会模拟真实项目流程，从需求分析到测试交付完整走一遍。小组合作很重要，选对组员成功一半。', 18, NOW() - INTERVAL 8 DAY),
+(10, 1, 1, 5, 3, '计组真的硬核，从数电到CPU设计，实验课写Verilog写到怀疑人生。不过学完对整个计算机体系理解会上一个台阶。', 12, NOW() - INTERVAL 7 DAY),
+(11, 1, 0, 4, 4, '操作系统课内容量大，进程管理、内存管理、文件系统三大块。老师讲课幽默风趣，PintOS实验是亮点，能动手实现一个迷你OS。', 14, NOW() - INTERVAL 5 DAY),
+(1, 1, 1, 3, 4, '高等数学是学分最高的课，5个学分！老师讲课节奏比较快，建议课前看书预习。期中考试计算为主，期末偏证明。成绩公式：(平时30%+期中30%+期末40%)', 20, NOW() - INTERVAL 3 DAY),
+(3, 1, 0, 3, 4, '线性代数对于后续机器学习方向很重要。老师要求比较严，矩阵运算和特征值要练熟。考试题型比较固定，刷往年题有效。', 13, NOW() - INTERVAL 1 DAY);
 
 
 -- ============================================================
@@ -465,19 +471,31 @@ INSERT INTO `club` (`name`, `category`, `description`, `activity_frequency`, `re
 
 -- ============================================================
 -- 社团活动 - 模拟招新时间线
+-- event_time 使用相对当前时间（DATE_ADD(NOW(), INTERVAL n DAY)），
+-- 保证任何时候初始化数据库，招新日历都不会因过期时间被 event_time >= NOW() 过滤为空。
 -- ============================================================
 
 INSERT INTO `club_event` (`club_id`, `title`, `event_type`, `event_time`, `location`) VALUES
-(1, '甲骨文俱乐部招新宣讲 & 技术体验', '宣讲会', '2025-09-18 19:00:00', '信息学馆A101'),
-(1, 'Oracle数据库入门工作坊', '开放日', '2025-09-25 14:00:00', '1号教学楼B区机房'),
-(2, 'NEX团队CTF新生体验赛', '开放日', '2025-09-20 14:00:00', '信息学馆网络安全实验室'),
-(2, 'NEX团队2025秋季招新面试', '面试', '2025-09-27 18:00:00', '信息学馆A209'),
-(4, '软件学院学生会干事招新', '面试', '2025-09-16 18:30:00', '信息学馆A103'),
-(3, '创新创业基地大创项目说明会', '宣讲会', '2025-09-22 16:00:00', '信息学馆A101'),
-(5, '学术促进会新学期首次学术沙龙', '开放日', '2025-09-23 19:00:00', '图书馆咖啡厅'),
-(6, 'KAB创业俱乐部创业idea路演', '开放日', '2025-09-28 15:00:00', '学生生活服务中心多功能厅'),
-(7, '羽毛球社新生体验赛', '开放日', '2025-09-21 14:00:00', '风雨操场羽毛球馆'),
-(8, '话剧社《雷雨》秋季公演', '开放日', '2025-10-12 19:00:00', '浑南校区学生剧场');
+(1, '甲骨文俱乐部招新宣讲 & 技术体验', '宣讲会', DATE_ADD(NOW(), INTERVAL 2 DAY), '信息学馆A101'),
+(1, 'Oracle数据库入门工作坊', '开放日', DATE_ADD(NOW(), INTERVAL 5 DAY), '1号教学楼B区机房'),
+(2, 'NEX团队CTF新生体验赛', '开放日', DATE_ADD(NOW(), INTERVAL 7 DAY), '信息学馆网络安全实验室'),
+(2, 'NEX团队秋季招新面试', '面试', DATE_ADD(NOW(), INTERVAL 11 DAY), '信息学馆A209'),
+(4, '软件学院学生会干事招新', '面试', DATE_ADD(NOW(), INTERVAL 3 DAY), '信息学馆A103'),
+(3, '创新创业基地大创项目说明会', '宣讲会', DATE_ADD(NOW(), INTERVAL 9 DAY), '信息学馆A101'),
+(5, '学术促进会新学期首次学术沙龙', '开放日', DATE_ADD(NOW(), INTERVAL 13 DAY), '图书馆咖啡厅'),
+(6, 'KAB创业俱乐部创业idea路演', '开放日', DATE_ADD(NOW(), INTERVAL 16 DAY), '学生生活服务中心多功能厅'),
+(7, '羽毛球社新生体验赛', '开放日', DATE_ADD(NOW(), INTERVAL 20 DAY), '风雨操场羽毛球馆'),
+(8, '话剧社《雷雨》秋季公演', '开放日', DATE_ADD(NOW(), INTERVAL 25 DAY), '浑南校区学生剧场'),
+(9, '软件学院团委招新宣讲会', '宣讲会', DATE_ADD(NOW(), INTERVAL 4 DAY), '信息学馆A201'),
+(10, '文艺中心新生才艺招募', '开放日', DATE_ADD(NOW(), INTERVAL 8 DAY), '学生生活服务中心多功能厅'),
+(11, '新媒体中心拍摄与剪辑体验课', '开放日', DATE_ADD(NOW(), INTERVAL 12 DAY), '信息学馆B209'),
+(12, '学发委朋辈导师见面会', '开放日', DATE_ADD(NOW(), INTERVAL 15 DAY), '图书馆咖啡厅'),
+(13, '志协志愿服务项目宣讲', '宣讲会', DATE_ADD(NOW(), INTERVAL 18 DAY), '1号教学楼A102'),
+(14, '科协新生编程挑战赛', '开放日', DATE_ADD(NOW(), INTERVAL 22 DAY), '信息学馆机房'),
+(15, '自管会寝室文化节启动', '开放日', DATE_ADD(NOW(), INTERVAL 28 DAY), '学生宿舍区广场'),
+(1, '甲骨文俱乐部二次招新面试', '面试', DATE_ADD(NOW(), INTERVAL 35 DAY), '信息学馆A101'),
+(2, 'NEX团队春季招新宣讲', '宣讲会', DATE_ADD(NOW(), INTERVAL 45 DAY), '信息学馆A101'),
+(5, '学术促进会论文写作工作坊', '开放日', DATE_ADD(NOW(), INTERVAL 55 DAY), '图书馆研讨室');
 
 
 -- ============================================================
@@ -585,17 +603,17 @@ INSERT INTO `poi_route` (`from_poi_id`, `to_poi_id`, `description`, `estimated_m
 -- 攻略 - 新生办事流程（东北大学软件学院定制）
 -- ============================================================
 
-INSERT INTO `guide` (`title`, `category`, `content`) VALUES
-('新生报到注册流程', '办事流程',
+INSERT INTO `guide` (`title`, `category`, `summary`, `content`) VALUES
+('新生报到注册流程', '办事流程', '从接站到领校园卡，七步搞定报到全流程',
 '[{"step":1,"title":"抵达浑南校区","description":"按录取通知书日期到达东北大学浑南校区（沈阳市浑南区创新路195号）。沈阳站/沈阳北站/桃仙机场均有学校接站大巴。自驾可导航至浑南校区北门。","location_poi_id":12},{"step":2,"title":"找到软件学院接待点","description":"各学院在图书馆前广场设有新生接待帐篷。找到软件学院的蓝色帐篷，出示录取通知书和身份证，领取报到指引单和校园卡。","location_poi_id":2},{"step":3,"title":"办理宿舍入住","description":"凭报到指引单到宿舍楼一楼管理员处领取房间钥匙。浑南校区宿舍均为四人间上床下桌，配备空调和WIFI。A区（东侧）B区（西侧）根据学院分配。","location_poi_id":14},{"step":4,"title":"缴纳费用（如未线上缴费）","description":"学费和住宿费可通过东北大学财务处公众号线上缴费。如需现场缴费，到学生生活服务中心财务窗口办理。学费标准：软件工程专业按学分收费（100元/学分）。","location_poi_id":8},{"step":5,"title":"领取军训服装","description":"凭校园卡到风雨操场领取军训服装（迷彩服、帽子、腰带、胶鞋），当场试穿，不合适可以调换。","location_poi_id":10},{"step":6,"title":"参加新生见面会","description":"各班级会在报到当天或第二天组织新生见面会，由辅导员和班级导师主持，介绍学院情况和近期安排。地点通常在信息学馆。","location_poi_id":3},{"step":7,"title":"完成报到","description":"将盖章后的报到指引单交回学院接待点，正式成为东北大学软件学院的一员！关注「东大软件」微信公众号获取后续通知。","location_poi_id":null}]'
 ),
-('图书馆借阅指南', '办事流程',
+('图书馆借阅指南', '办事流程', '检索、找书、借还、续借，图书馆使用一步到位',
 '[{"step":1,"title":"开通借阅权限","description":"新生入学后，图书馆借阅权限自动开通。无需单独办理。如无法刷卡进入，到图书馆1楼服务台激活。","location_poi_id":2},{"step":2,"title":"检索图书","description":"在图书馆1楼大厅的检索终端或通过东北大学图书馆微信公众号检索需要的图书。记下索书号和馆藏位置。","location_poi_id":2},{"step":3,"title":"找书","description":"根据索书号到对应楼层找书。社科学科（A-K类）在2-3层，自然科学（N-Z类）在4层。找不到可以问服务台工作人员。","location_poi_id":2},{"step":4,"title":"自助借还","description":"在1楼自助借还机上刷校园卡，按屏幕提示操作。借期60天，可续借一次（延长30天）。每人最多同时借10本书。","location_poi_id":2},{"step":5,"title":"还书&超期处理","description":"到期前归还到自助还书机。超期按每天0.1元/册收取滞纳金。如遇寒暑假，还书日期自动顺延到开学后一周。","location_poi_id":2}]'
 ),
-('选课操作指南', '学习攻略',
+('选课操作指南', '学习攻略', '预选→正选→补退选，三轮选课全流程详解',
 '[{"step":1,"title":"查看培养方案","description":"登录东北大学教务系统（jwxt.neu.edu.cn），查看软件学院本专业的培养方案。了解必修课、选修课学分要求和开课学期。软件学院大类招生后第2学期末进行专业分流（软件工程/信息安全/数字媒体技术）。","location_poi_id":null},{"step":2,"title":"关注选课通知","description":"教务处每学期第16周左右发布下学期选课通知。注意选课分为三轮：预选→正选→补退选。错过预选还可以正选补报。","location_poi_id":null},{"step":3,"title":"预选阶段","description":"在教务系统中提交选课志愿。热门课（给分高的老师）会超额，系统抽签决定。建议选2-3个备选方案。","location_poi_id":null},{"step":4,"title":"正选阶段","description":"查看预选结果，未中签的课程可重新选择尚有余额的课程。先到先得，建议正选第一天尽早登录。软院的专业课通常不会超额。","location_poi_id":null},{"step":5,"title":"补退选","description":"开学后第一周为补退选期。听过第一节课后如不满意，可以退课或换课。注意必修课不能退，选修课退课后需确保总学分达标。","location_poi_id":null}]'
 ),
-('校医院就诊&医保报销', '办事流程',
+('校医院就诊&医保报销', '办事流程', '挂号、就诊、转诊、报销，看病与医保攻略',
 '[{"step":1,"title":"挂号","description":"携带校园卡和身份证到校医院1楼挂号窗口挂号。挂号费约10元（医保卡直接结算）。首诊需建档。","location_poi_id":9},{"step":2,"title":"就诊","description":"按号到对应诊室就诊。常见病症（感冒发烧、肠胃炎、外伤）可在校医院直接处理。","location_poi_id":9},{"step":3,"title":"缴费取药","description":"到收费窗口缴费，医保即时结算。凭处方到药房取药。校医院药品种类有限，特殊药品需到校外药店购买。","location_poi_id":9},{"step":4,"title":"转诊（如需）","description":"如需到校外医院就诊，校医院医生开具转诊单。浑南校区附近主要转诊医院：中国医科大学附属盛京医院（浑南院区）。保留所有发票和病历用于报销。","location_poi_id":9},{"step":5,"title":"医保报销","description":"校外就诊后，携带转诊单、发票、费用清单、病历复印件到学生活动中心医保窗口申请报销。报销比例约50%-70%（根据费用类别）。每年有报销截止日期，注意及时办理。","location_poi_id":8}]'
 );
 

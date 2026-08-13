@@ -241,8 +241,10 @@ def admin_user(db_session):
 
 @pytest.fixture(scope="function", autouse=True)
 def reset_rate_limiter():
-    """每个测试前重置限流器状态，防止跨测试污染。"""
-    from app.middleware.rate_limit import auth_limiter
-    auth_limiter._clients.clear()
+    """每个测试前重置限流器状态，防止跨测试污染（登录/注册各自独立的限流器）。"""
+    from app.middleware.rate_limit import login_limiter, register_limiter
+    login_limiter._clients.clear()
+    register_limiter._clients.clear()
     yield
-    auth_limiter._clients.clear()
+    login_limiter._clients.clear()
+    register_limiter._clients.clear()

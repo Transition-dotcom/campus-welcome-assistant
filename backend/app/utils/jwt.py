@@ -7,26 +7,28 @@ from jose import jwt, JWTError
 from app.config import settings
 
 
-def create_access_token(user_id: int, role: str) -> str:
-    """生成 access_token（短期，2小时）。"""
+def create_access_token(user_id: int, role: str, ver: int = 0) -> str:
+    """生成 access_token（短期，2小时）。ver 为用户 token 版本号。"""
     expire = datetime.utcnow() + timedelta(minutes=settings.access_token_expire_minutes)
     payload = {
         "sub": str(user_id),
         "role": role,
         "type": "access",
+        "ver": ver,
         "exp": expire,
         "iat": datetime.utcnow(),
     }
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
 
-def create_refresh_token(user_id: int, role: str) -> str:
-    """生成 refresh_token（长期，7天）。"""
+def create_refresh_token(user_id: int, role: str, ver: int = 0) -> str:
+    """生成 refresh_token（长期，7天）。ver 用于轮换撤销：刷新时 +1，旧 token 失效。"""
     expire = datetime.utcnow() + timedelta(days=settings.refresh_token_expire_days)
     payload = {
         "sub": str(user_id),
         "role": role,
         "type": "refresh",
+        "ver": ver,
         "exp": expire,
         "iat": datetime.utcnow(),
     }

@@ -75,9 +75,9 @@ def delete_club(db: Session, club_id: int):
 # ──── 社团活动 ────
 
 def get_events(db: Session, club_id: int | None = None, upcoming_only: bool = True) -> list[ClubEventResponse]:
-    """查询社团活动：可按社团筛选，默认只返回未过期的。"""
+    """查询社团活动：可按社团筛选，默认只返回未过期的。下架社团（status=0）的活动不再展示。"""
     from datetime import datetime
-    q = db.query(ClubEvent)
+    q = db.query(ClubEvent).join(Club, Club.id == ClubEvent.club_id).filter(Club.status == 1)
     if club_id:
         q = q.filter(ClubEvent.club_id == club_id)
     if upcoming_only:

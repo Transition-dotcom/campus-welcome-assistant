@@ -41,15 +41,30 @@ class RateLimiter:
         return True
 
 
-# 实例：每个 IP 每分钟最多 10 次登录/注册请求
-auth_limiter = RateLimiter(max_requests=10, window_seconds=60)
-
-
-async def rate_limit_auth(request: Request):
-    """FastAPI 依赖：对认证接口限流。超限返回 429。"""
-    client_ip = request.client.host if request.client else "unknown"
-    if not auth_limiter.is_allowed(client_ip):
+def _check(client_ip: str, limiter: RateLimiter):
+    """通用检查逻辑：超限返回 429。"""
+    if not limiter.is_allowed(client_ip):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="请求过于频繁，请稍后再试",
         )
+
+
+# 登录与注册各自独立的限流器实例（各自配额，互不挤占）
+login_limiter = RateLimiter(max_requests=10, window_seconds=60)
+register_limiter = RateLimiter(max_requests=10, window_seconds=60)
+
+# 兼容旧引用（登录限流器）
+auth_limiter = login_limiter
+
+
+async def rate_limit_auth(request: Request):
+    """FastAPI 依赖：对登录接口限流。超限返回 429。"""
+    client_ip = request.client.host if request.client else "unknown"
+    _check(client_ip, login_limiter)
+
+
+async def rate_limit_register(request: Request):
+    """FastAPI 依赖：对注册接口限流。超限返回 429。"""
+    client_ip = request.client.host if request.client else "unknown"
+    _check(client_ip, register_limiter)

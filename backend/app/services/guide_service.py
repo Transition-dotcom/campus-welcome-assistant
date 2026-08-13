@@ -7,8 +7,11 @@ from sqlalchemy import desc
 from app.models.guide import Guide, FreshmanTask, SafetyTip
 from app.models.user import UserCheckin
 from app.models.course import CourseReview
-from app.models.club import ClubEvent
-from app.schemas.guide import GuideResponse, FreshmanTaskResponse, SafetyTipResponse, DashboardResponse, SearchResult
+from app.models.club import Club, ClubEvent
+from app.schemas.guide import (
+    GuideResponse, GuideUpsert, FreshmanTaskResponse, FreshmanTaskUpsert,
+    SafetyTipResponse, DashboardResponse, SearchResult,
+)
 from app.schemas.common import PageResponse
 from datetime import datetime
 
@@ -123,10 +126,15 @@ def get_dashboard(db: Session, user_id: int | None = None) -> DashboardResponse:
         .all()
     )
 
-    # 近期社团活动（未来 3 条）
-    upcoming = db.query(ClubEvent).filter(ClubEvent.event_time >= datetime.utcnow()).order_by(
-        ClubEvent.event_time
-    ).limit(3).all()
+    # 近期社团活动（未来 3 条，只展示未下架社团的活动）
+    upcoming = (
+        db.query(ClubEvent)
+        .join(Club, Club.id == ClubEvent.club_id)
+        .filter(ClubEvent.event_time >= datetime.utcnow(), Club.status == 1)
+        .order_by(ClubEvent.event_time)
+        .limit(3)
+        .all()
+    )
 
     # 置顶安全提醒
     pinned = db.query(SafetyTip).filter(SafetyTip.is_pinned == 1).order_by(SafetyTip.sort_order).all()
@@ -195,60 +203,154 @@ def _expand_keywords(keyword: str) -> list[str]:
 
 
 def search_all(db: Session, keyword: str, page: int = 1, page_size: int = 20) -> PageResponse:
-    """跨模块搜索。支持常见课程缩写（如「高数」）扩展匹配全称。返回分页结果。"""
+    """跨模块搜索。支持常见课程缩写（如「高数」）扩展匹配全称。返回分页结果。
+
+    避免全表加载：每张表只取 limit(page_size * page) 条数据，
+    total 用 COUNT 单独统计，保证分页信息准确。
+    """
     from sqlalchemy import or_
 
     from app.models.course import Course
-    from app.models.club import Club
     from app.models.poi import POI
-    from app.models.guide import Guide
 
     if not keyword or len(keyword) < 2:
         return PageResponse(items=[], total=0, page=page, page_size=page_size, total_pages=0)
 
     terms = _expand_keywords(keyword)
-    results = []
+    fetch_limit = page_size * page
 
-    # 搜课程
-    courses = (
-        db.query(Course)
-        .filter(or_(*[Course.name.like(f"%{t}%") for t in terms]), Course.status == 1)
-        .all()
-    )
-    for c in courses:
-        results.append(SearchResult(type="course", id=c.id, title=c.name))
+    total = 0
+    results: list[SearchResult] = []
 
-    # 搜社团
-    clubs = (
-        db.query(Club)
-        .filter(or_(*[Club.name.like(f"%{t}%") for t in terms]), Club.status == 1)
-        .all()
-    )
-    for c in clubs:
-        results.append(SearchResult(type="club", id=c.id, title=c.name))
+    def _search_model(model, title_col: str, type_name: str, extra_filters=None) -> None:
+        """对单张表执行搜索：COUNT 统计 total + LIMIT 取当前页需要的数据。"""
+        nonlocal total
+        col = getattr(model, title_col)
+        like_filters = or_(*[col.like(f"%{t}%") for t in terms])
+        q = db.query(model)
+        if extra_filters is not None:
+            q = q.filter(*extra_filters)
+        q = q.filter(like_filters)
+        total += q.count()
+        rows = q.order_by(model.id).limit(fetch_limit).all()
+        for row in rows:
+            results.append(SearchResult(type=type_name, id=row.id, title=getattr(row, title_col)))
 
-    # 搜 POI
-    pois = (
-        db.query(POI)
-        .filter(or_(*[POI.name.like(f"%{t}%") for t in terms]))
-        .all()
-    )
-    for p in pois:
-        results.append(SearchResult(type="poi", id=p.id, title=p.name))
-
+    # 搜课程（只展示上架课程）
+    _search_model(Course, "name", "course", extra_filters=(Course.status == 1,))
+    # 搜社团（只展示上架社团）
+    _search_model(Club, "name", "club", extra_filters=(Club.status == 1,))
+    # 搜 POI（只展示未下架地标）
+    _search_model(POI, "name", "poi", extra_filters=(POI.status == 1,))
     # 搜攻略
-    guides = (
-        db.query(Guide)
-        .filter(or_(*[Guide.title.like(f"%{t}%") for t in terms]))
-        .all()
-    )
-    for g in guides:
-        results.append(SearchResult(type="guide", id=g.id, title=g.title))
+    _search_model(Guide, "title", "guide")
 
-    total = len(results)
     total_pages = (total + page_size - 1) // page_size
     start = (page - 1) * page_size
     end = start + page_size
     page_items = results[start:end]
 
     return PageResponse(items=page_items, total=total, page=page, page_size=page_size, total_pages=total_pages)
+
+
+# ──── 管理端：攻略 CRUD ────
+
+def get_guides_page(db: Session, page: int = 1, page_size: int = 20) -> PageResponse:
+    """管理员分页查询攻略列表。"""
+    q = db.query(Guide)
+    total = q.count()
+    guides = q.order_by(Guide.id).offset((page - 1) * page_size).limit(page_size).all()
+    total_pages = (total + page_size - 1) // page_size
+    return PageResponse(
+        items=[GuideResponse.model_validate(g) for g in guides],
+        total=total, page=page, page_size=page_size, total_pages=total_pages,
+    )
+
+
+def create_guide(db: Session, req: GuideUpsert) -> GuideResponse:
+    """管理员创建攻略。"""
+    guide = Guide(title=req.title, category=req.category, summary=req.summary, content=req.content)
+    db.add(guide)
+    db.commit()
+    db.refresh(guide)
+    return GuideResponse.model_validate(guide)
+
+
+def update_guide(db: Session, guide_id: int, req: GuideUpsert) -> GuideResponse:
+    """管理员更新攻略。"""
+    from fastapi import HTTPException, status
+
+    guide = db.query(Guide).filter(Guide.id == guide_id).first()
+    if not guide:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="攻略不存在")
+    guide.title = req.title
+    guide.category = req.category
+    guide.summary = req.summary
+    guide.content = req.content
+    db.commit()
+    db.refresh(guide)
+    return GuideResponse.model_validate(guide)
+
+
+def delete_guide(db: Session, guide_id: int) -> dict:
+    """管理员删除攻略（Guide 无子表，硬删除）。"""
+    from fastapi import HTTPException, status
+
+    guide = db.query(Guide).filter(Guide.id == guide_id).first()
+    if not guide:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="攻略不存在")
+    db.delete(guide)
+    db.commit()
+    return {"message": "已删除"}
+
+
+# ──── 管理端：任务 CRUD ────
+
+def create_task(db: Session, req: FreshmanTaskUpsert) -> FreshmanTaskResponse:
+    """管理员创建新生任务。"""
+    task = FreshmanTask(
+        title=req.title,
+        description=req.description,
+        icon=req.icon,
+        sort_order=req.sort_order if req.sort_order is not None else 0,
+        badge_level=req.badge_level,
+    )
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+    return FreshmanTaskResponse.model_validate(task)
+
+
+def update_task(db: Session, task_id: int, req: FreshmanTaskUpsert) -> FreshmanTaskResponse:
+    """管理员更新新生任务（仅更新提交的字段）。"""
+    from fastapi import HTTPException, status
+
+    task = db.query(FreshmanTask).filter(FreshmanTask.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="任务不存在")
+    update_data = req.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(task, key, value)
+    db.commit()
+    db.refresh(task)
+    return FreshmanTaskResponse.model_validate(task)
+
+
+def delete_task(db: Session, task_id: int) -> dict:
+    """管理员删除新生任务。存在打卡记录时拒绝删除。"""
+    from fastapi import HTTPException, status
+
+    task = db.query(FreshmanTask).filter(FreshmanTask.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="任务不存在")
+
+    checkin_count = db.query(UserCheckin).filter(UserCheckin.task_id == task_id).count()
+    if checkin_count > 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"该任务存在 {checkin_count} 条打卡记录，请先清理打卡记录",
+        )
+
+    db.delete(task)
+    db.commit()
+    return {"message": "已删除"}

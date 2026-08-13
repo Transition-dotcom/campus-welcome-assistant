@@ -20,8 +20,8 @@ def get_pois(
     category: str | None = None,
     keyword: str | None = None,
 ) -> PageResponse:
-    """分页查询 POI，支持分类和搜索。"""
-    q = db.query(POI)
+    """分页查询 POI，支持分类和搜索。只返回未下架（status=1）的地标。"""
+    q = db.query(POI).filter(POI.status == 1)
     if category:
         q = q.filter(POI.category == category)
     if keyword:
@@ -36,8 +36,8 @@ def get_pois(
 
 
 def get_poi_detail(db: Session, poi_id: int) -> POIResponse:
-    """查询 POI 详情。"""
-    poi = db.query(POI).filter(POI.id == poi_id).first()
+    """查询 POI 详情。已下架（status=0）同样视为不存在 → 404。"""
+    poi = db.query(POI).filter(POI.id == poi_id, POI.status == 1).first()
     if not poi:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="地标不存在")
     return POIResponse.model_validate(poi)
@@ -65,11 +65,11 @@ def update_poi(db: Session, poi_id: int, req: POICreate) -> POIResponse:
 
 
 def delete_poi(db: Session, poi_id: int):
-    """管理员删除 POI。"""
+    """管理员删除 POI（软删除，保留纠错/路径等关联记录可读）。"""
     poi = db.query(POI).filter(POI.id == poi_id).first()
     if not poi:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="地标不存在")
-    db.delete(poi)
+    poi.status = 0
     db.commit()
 
 
@@ -116,7 +116,7 @@ def create_route(db: Session, req: POIRouteCreate) -> POIRouteResponse:
 
 def submit_correction(db: Session, user_id: int, req: POICorrectionCreate) -> POICorrectionResponse:
     """用户提交 POI 纠错。"""
-    poi = db.query(POI).filter(POI.id == req.poi_id).first()
+    poi = db.query(POI).filter(POI.id == req.poi_id, POI.status == 1).first()
     if not poi:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="地标不存在")
 
@@ -128,12 +128,18 @@ def submit_correction(db: Session, user_id: int, req: POICorrectionCreate) -> PO
 
 
 def get_corrections(db: Session, status_filter: str | None = None) -> list[POICorrectionResponse]:
-    """管理员查询纠错列表。"""
-    q = db.query(POICorrection)
+    """管理员查询纠错列表。JOIN 出地标名称，地标软删除后关联信息仍可读。"""
+    q = db.query(POICorrection, POI).join(POI, POI.id == POICorrection.poi_id)
     if status_filter:
         q = q.filter(POICorrection.status == status_filter)
-    corrections = q.order_by(desc(POICorrection.id)).all()
-    return [POICorrectionResponse.model_validate(c) for c in corrections]
+    rows = q.order_by(desc(POICorrection.id)).all()
+
+    items = []
+    for correction, poi in rows:
+        resp = POICorrectionResponse.model_validate(correction)
+        resp.poi_name = poi.name if poi else None
+        items.append(resp)
+    return items
 
 
 def resolve_correction(db: Session, correction_id: int) -> dict:

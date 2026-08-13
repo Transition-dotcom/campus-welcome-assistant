@@ -20,6 +20,7 @@ class POI(Base):
     tips = Column(Text, nullable=True, comment="注意事项")
     lat = Column(DECIMAL(10, 7), nullable=True, comment="纬度（预留）")
     lng = Column(DECIMAL(10, 7), nullable=True, comment="经度（预留）")
+    status = Column(Integer, nullable=False, default=1, comment="1正常 0下架（软删除）")
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     __table_args__ = (

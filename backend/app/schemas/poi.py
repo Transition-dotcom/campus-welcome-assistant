@@ -24,6 +24,7 @@ class POICreate(POIBase):
 
 class POIResponse(POIBase):
     id: int
+    status: int
     created_at: datetime
 
     class Config:
@@ -62,6 +63,7 @@ class POICorrectionResponse(BaseModel):
     content: str
     status: str
     created_at: datetime
+    poi_name: str | None = None  # 服务层 JOIN 填充（地标软删除后仍可读）
 
     class Config:
         from_attributes = True

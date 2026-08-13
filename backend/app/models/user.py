@@ -16,10 +16,11 @@ class User(Base):
     password_hash = Column(String(255), nullable=False, comment="BCrypt 密码哈希")
     college = Column(String(100), nullable=True, comment="学院")
     major = Column(String(100), nullable=True, comment="专业")
-    grade = Column(String(10), nullable=True, comment="入学年份")
+    grade = Column(String(20), nullable=True, comment="入学年份")
     avatar_url = Column(String(500), nullable=True, comment="头像 URL")
     role = Column(String(20), nullable=False, default="USER", comment="角色：USER/ADMIN")
     status = Column(Integer, nullable=False, default=1, comment="1正常 0禁用")
+    token_version = Column(Integer, nullable=False, default=0, comment="token 版本号：刷新时 +1，旧 refresh_token 立即失效")
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -39,6 +40,8 @@ class UserFavorite(Base):
 
     __table_args__ = (
         UniqueConstraint("user_id", "course_review_id", name="uk_user_review"),
+        # 联合唯一键以 (user_id, course_review_id) 为前缀，无法服务按评价查询收藏数的场景
+        Index("idx_favorite_review_id", "course_review_id"),
     )
 
     user = relationship("User", back_populates="favorites")
@@ -56,6 +59,7 @@ class UserCheckin(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "task_id", name="uk_user_task"),
         Index("idx_checkin_user_id", "user_id"),
+        Index("idx_checkin_task_id", "task_id"),  # 管理端删除任务前检查打卡记录
     )
 
     user = relationship("User", back_populates="checkins")

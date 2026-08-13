@@ -68,6 +68,7 @@ class ReviewComment(Base):
 
     __table_args__ = (
         Index("idx_comment_review_id", "review_id"),
+        Index("idx_comment_parent_id", "parent_id"),  # 查询楼中楼回复
     )
 
     review = relationship("CourseReview", back_populates="comments")

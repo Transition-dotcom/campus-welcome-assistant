@@ -31,8 +31,8 @@ def register(db: Session, req: RegisterRequest) -> LoginResponse:
     db.refresh(user)
 
     # 生成 token
-    access_token = create_access_token(user.id, user.role)
-    refresh_token = create_refresh_token(user.id, user.role)
+    access_token = create_access_token(user.id, user.role, user.token_version)
+    refresh_token = create_refresh_token(user.id, user.role, user.token_version)
 
     return LoginResponse(
         user=UserProfile.model_validate(user),
@@ -52,8 +52,8 @@ def login(db: Session, req: LoginRequest) -> LoginResponse:
     if not verify_password(req.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="昵称或密码错误")
 
-    access_token = create_access_token(user.id, user.role)
-    refresh_token = create_refresh_token(user.id, user.role)
+    access_token = create_access_token(user.id, user.role, user.token_version)
+    refresh_token = create_refresh_token(user.id, user.role, user.token_version)
 
     return LoginResponse(
         user=UserProfile.model_validate(user),
@@ -62,8 +62,16 @@ def login(db: Session, req: LoginRequest) -> LoginResponse:
 
 
 def refresh_access_token(db: Session, refresh_token_str: str) -> TokenResponse:
-    """使用 refresh_token 换取新的 access_token。"""
+    """使用 refresh_token 换取新的 access_token。
+
+    轮换撤销机制：token 携带 ver（token_version），刷新成功后版本号 +1，
+    旧 refresh_token 立即失效；若收到版本不匹配的 token（疑似复用/被盗），
+    直接 401 并记录日志。
+    """
+    import logging
     from app.utils.jwt import decode_token
+
+    logger = logging.getLogger(__name__)
 
     payload = decode_token(refresh_token_str)
     if payload is None or payload.get("type") != "refresh":
@@ -74,9 +82,18 @@ def refresh_access_token(db: Session, refresh_token_str: str) -> TokenResponse:
     if not user or user.status == 0:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户不存在或已禁用")
 
+    # 版本校验：不匹配说明该 token 已被轮换作废（可能被盗用）
+    if payload.get("ver") != user.token_version:
+        logger.warning("refresh_token 版本不匹配（疑似复用/被盗），user_id=%s", user_id)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="refresh_token 已失效，请重新登录")
+
+    # 轮换：版本号 +1，旧 token 全部作废
+    user.token_version += 1
+    db.commit()
+
     return TokenResponse(
-        access_token=create_access_token(user.id, user.role),
-        refresh_token=create_refresh_token(user.id, user.role),  # 同时刷新
+        access_token=create_access_token(user.id, user.role, user.token_version),
+        refresh_token=create_refresh_token(user.id, user.role, user.token_version),
     )
 
 

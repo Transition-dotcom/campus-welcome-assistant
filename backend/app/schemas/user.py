@@ -10,13 +10,14 @@ from pydantic import BaseModel, Field
 
 class RegisterRequest(BaseModel):
     nickname: str = Field(..., min_length=2, max_length=50, description="昵称")
-    password: str = Field(..., min_length=6, max_length=100, description="密码（最少6位）")
+    # bcrypt 只处理前 72 字节，超过会报错或静默截断，因此上限设为 72
+    password: str = Field(..., min_length=6, max_length=72, description="密码（6-72位）")
     student_id: str | None = Field(None, max_length=20, description="学号（可选）")
 
 
 class LoginRequest(BaseModel):
     nickname: str = Field(..., min_length=2, max_length=50, description="昵称")
-    password: str = Field(..., min_length=6, max_length=100, description="密码")
+    password: str = Field(..., min_length=6, max_length=72, description="密码")
 
 
 class RefreshTokenRequest(BaseModel):
@@ -57,3 +58,8 @@ class UserProfile(BaseModel):
 class LoginResponse(BaseModel):
     user: UserProfile
     tokens: TokenResponse
+
+
+class UserStatusUpdate(BaseModel):
+    """管理端：启用/禁用用户。"""
+    status: int = Field(..., ge=0, le=1, description="1启用 0禁用")

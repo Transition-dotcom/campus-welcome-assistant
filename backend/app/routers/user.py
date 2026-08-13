@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.middleware.auth import get_current_user
-from app.middleware.rate_limit import rate_limit_auth
+from app.middleware.rate_limit import rate_limit_auth, rate_limit_register
 from app.schemas.user import (
     RegisterRequest, LoginRequest, RefreshTokenRequest,
     UpdateProfileRequest, LoginResponse, TokenResponse, UserProfile,
@@ -20,7 +20,7 @@ router = APIRouter(prefix="/api/user", tags=["用户中心"])
 def register(
     req: RegisterRequest,
     db: Session = Depends(get_db),
-    _: None = Depends(rate_limit_auth),
+    _: None = Depends(rate_limit_register),
 ):
     """注册新用户，成功后直接返回 token（注册即登录）。"""
     return user_service.register(db, req)

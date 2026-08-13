@@ -13,6 +13,7 @@ class Guide(Base):
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     title = Column(String(200), nullable=False)
     category = Column(String(50), nullable=False, comment="办事流程/生活指南/学习攻略")
+    summary = Column(String(500), nullable=True, comment="一句话简介")
     content = Column(JSON, nullable=True, comment="步骤内容（JSON数组）")
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
