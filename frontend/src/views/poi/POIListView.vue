@@ -1,11 +1,11 @@
 <template>
   <div class="poi-page">
     <h3>校园导览</h3>
-    <el-tabs v-model="activeCategory" @tab-change="fetchPOIs" type="card">
+    <el-tabs v-model="activeCategory" @tab-change="onTabChange" type="card">
       <el-tab-pane label="全部" name="" />
       <el-tab-pane v-for="c in categories" :key="c" :label="c" :name="c" />
     </el-tabs>
-    <el-input v-model="keyword" placeholder="搜索地标..." clearable @clear="fetchPOIs" @keyup.enter="fetchPOIs" style="margin-bottom:12px" />
+    <el-input v-model="keyword" placeholder="搜索地标..." clearable @clear="onKeywordSearch" @keyup.enter="onKeywordSearch" style="margin-bottom:12px" />
 
     <div v-loading="loading" class="poi-grid">
       <el-card v-for="p in pois" :key="p.id" class="poi-card" @click="$router.push(`/pois/${p.id}`)">
@@ -30,6 +30,15 @@ const keyword = ref('')
 const categories = ['教学楼', '食堂', '宿舍', '快递点', '运动场馆', '行政楼', '其他']
 
 onMounted(() => fetchPOIs())
+
+// 切换分类/关键词搜索时回到第 1 页（POI 目前固定取前 50 条，仍保持一致）
+function onTabChange() {
+  fetchPOIs()
+}
+
+function onKeywordSearch() {
+  fetchPOIs()
+}
 
 async function fetchPOIs() {
   loading.value = true

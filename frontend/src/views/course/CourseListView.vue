@@ -5,7 +5,7 @@
     <el-row :gutter="12" class="filters">
       <el-col :xs="12" :sm="6"><el-select v-model="filters.college" placeholder="学院" clearable><el-option v-for="c in colleges" :key="c" :label="c" :value="c" /></el-select></el-col>
       <el-col :xs="12" :sm="6"><el-select v-model="filters.category" placeholder="类别" clearable><el-option v-for="c in categories" :key="c" :label="c" :value="c" /></el-select></el-col>
-      <el-col :xs="24" :sm="12" style="margin-top:8px"><el-button type="primary" @click="fetchCourses">筛选</el-button></el-col>
+      <el-col :xs="24" :sm="12" style="margin-top:8px"><el-button type="primary" @click="applyFilters">筛选</el-button></el-col>
     </el-row>
 
     <!-- 列表 -->
@@ -44,6 +44,12 @@ const colleges = ['软件学院', '理学院', '外国语学院', '马克思主�
 const categories = ['通识必修', '通识选修', '专业必修', '专业选修']
 
 onMounted(() => fetchCourses())
+
+// 筛选条件变化时重置页码，避免停留在靠后页码导致列表为空
+function applyFilters() {
+  page.value = 1
+  fetchCourses()
+}
 
 async function fetchCourses() {
   loading.value = true

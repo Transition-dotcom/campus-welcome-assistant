@@ -66,7 +66,6 @@
 import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { guideApi } from '@/api'
-import { ElMessage } from 'element-plus'
 import { Search, ArrowRight } from '@element-plus/icons-vue'
 
 const route = useRoute()
@@ -98,9 +97,20 @@ const grouped = computed(() => {
   return groups
 })
 
+// 记录最近一次已发起的搜索（关键词 + 页码），用于避免 route watch 与 keyword watch 重复请求
+let lastSearched = { kw: '', p: 0 }
+// 标记 keyword 变化是否来自 route watch 同步，避免再走防抖重复搜索
+let syncingFromRoute = false
+
 // 输入框变化 → 防抖搜索（重置到第1页）
 let searchTimer = null
 watch(keyword, (val) => {
+  if (syncingFromRoute) {
+    syncingFromRoute = false
+    // 由路由驱动清空时同步清空结果
+    if (!val.trim() || val.trim().length < 2) clearResults()
+    return
+  }
   clearTimeout(searchTimer)
   const kw = val.trim()
   if (kw.length < 2) {
@@ -114,14 +124,21 @@ watch(keyword, (val) => {
   }, 400)
 })
 
-// URL 中的 keyword / page 变化时同步并触发搜索
+// URL 中的 keyword / page 变化时同步并触发搜索（初始加载 / 前进后退 / 分享链接）
 watch(
   () => route.query,
   (query) => {
     const kw = query.keyword || ''
     const p = Number(query.page) || 1
-    if (keyword.value !== kw) keyword.value = kw
-    if (kw.length >= 2) {
+    // URL 无关键词时重置记录，保证之后回到带关键词的 URL 能重新搜索
+    if (!kw) lastSearched = { kw: '', p: 0 }
+    // 由 syncUrl 引起的路由变化与刚发起的搜索一致，跳过避免重复请求
+    const isSameSearch = lastSearched.kw === kw && lastSearched.p === p
+    if (!isSameSearch && keyword.value !== kw) {
+      syncingFromRoute = true
+      keyword.value = kw
+    }
+    if (kw.length >= 2 && !isSameSearch) {
       runSearch(kw, p)
     }
   },
@@ -132,11 +149,14 @@ async function runSearch(kw = keyword.value.trim(), targetPage = page.value) {
   if (kw.length < 2) return
   // 取消上一次的请求，防止结果错乱
   if (abortController) abortController.abort()
-  abortController = new AbortController()
+  const controller = new AbortController()
+  abortController = controller
+  // 立即记录本次搜索，避免随后 syncUrl 触发 route watch 时重复请求
+  lastSearched = { kw, p: targetPage }
 
   loading.value = true
   try {
-    const res = await guideApi.search(kw, targetPage, pageSize.value, abortController.signal)
+    const res = await guideApi.search(kw, targetPage, pageSize.value, controller.signal)
     results.value = res.items || []
     total.value = res.total || 0
     totalPages.value = res.total_pages || 0
@@ -148,8 +168,11 @@ async function runSearch(kw = keyword.value.trim(), targetPage = page.value) {
     total.value = 0
     totalPages.value = 0
   } finally {
-    loading.value = false
-    abortController = null
+    // 仅当 controller 仍是本次请求时才清理，避免旧请求的 finally 影响新请求
+    if (abortController === controller) {
+      abortController = null
+      loading.value = false
+    }
   }
 }
 

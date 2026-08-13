@@ -1,7 +1,7 @@
 <template>
   <div class="home-page">
     <!-- 搜索栏 -->
-    <div class="search-bar">
+    <div ref="searchBarRef" class="search-bar">
       <el-input
         v-model="keyword"
         placeholder="搜索课程、社团、地标、攻略..."
@@ -102,7 +102,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { guideApi } from '@/api'
@@ -112,6 +112,7 @@ const router = useRouter()
 const authStore = useAuthStore()
 const keyword = ref('')
 const searchResults = ref([])
+const searchBarRef = ref(null)
 const dashboard = ref({ task_progress: {}, hot_reviews: [], upcoming_events: [], pinned_tips: [] })
 
 const taskPercent = computed(() => {
@@ -129,7 +130,19 @@ onMounted(async () => {
   try {
     dashboard.value = await guideApi.getDashboard()
   } catch { /* 无数据时静默 */ }
+  // 点击页面其他区域时关闭搜索下拉
+  document.addEventListener('click', handleDocClick)
 })
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleDocClick)
+})
+
+function handleDocClick(e) {
+  if (searchBarRef.value && !searchBarRef.value.contains(e.target)) {
+    searchResults.value = []
+  }
+}
 
 let searchTimer = null
 let abortController = null
@@ -143,7 +156,8 @@ watch(keyword, (val) => {
 
   searchTimer = setTimeout(async () => {
     try {
-      searchResults.value = await guideApi.search(val, abortController.signal)
+      // 注意参数顺序：search(keyword, page, pageSize, signal)
+      searchResults.value = await guideApi.search(val, 1, 20, abortController.signal)
     } catch (err) {
       if (err.name !== 'CanceledError' && err.code !== 'ERR_CANCELED') {
         searchResults.value = []

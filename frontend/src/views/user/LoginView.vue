@@ -18,11 +18,11 @@
 
 <script setup>
 import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { userApi } from '@/api'
-import { ElMessage } from 'element-plus'
 
+const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const formRef = ref()
@@ -33,6 +33,15 @@ const rules = {
   password: [{ required: true, min: 6, message: '密码至少6位', trigger: 'blur' }],
 }
 
+// 校验 redirect 参数：仅允许站内相对路径，防止开放重定向
+function getRedirectTarget() {
+  const redirect = route.query.redirect
+  if (typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//')) {
+    return redirect
+  }
+  return '/home'
+}
+
 async function doLogin() {
   const valid = await formRef.value.validate().catch(() => false)
   if (!valid) return
@@ -41,7 +50,7 @@ async function doLogin() {
     const data = await userApi.login({ nickname: form.nickname, password: form.password })
     authStore.setAuth(data)
     ElMessage.success('登录成功')
-    router.push('/home')
+    router.push(getRedirectTarget())
   } catch { /* 错误已在拦截器处理 */ }
   finally { loading.value = false }
 }

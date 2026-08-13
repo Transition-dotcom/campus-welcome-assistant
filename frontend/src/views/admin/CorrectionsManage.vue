@@ -28,7 +28,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { adminApi } from '@/api'
-import { ElMessage } from 'element-plus'
 
 const loading = ref(false)
 const corrections = ref([])

@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
 const routes = [
   {
@@ -104,7 +105,15 @@ const routes = [
       { path: 'pois', name: 'AdminPOIs', component: () => import('@/views/admin/POIsManage.vue') },
       { path: 'corrections', name: 'AdminCorrections', component: () => import('@/views/admin/CorrectionsManage.vue') },
       { path: 'users', name: 'AdminUsers', component: () => import('@/views/admin/UsersManage.vue') },
+      { path: 'reports', name: 'AdminReports', component: () => import('@/views/admin/ReportsManage.vue') },
+      { path: 'guides', name: 'AdminGuides', component: () => import('@/views/admin/GuidesManage.vue') },
+      { path: 'tasks', name: 'AdminTasks', component: () => import('@/views/admin/TasksManage.vue') },
     ],
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    component: () => import('@/views/NotFoundView.vue'),
   },
 ]
 
@@ -114,28 +123,23 @@ const router = createRouter({
 })
 
 // 路由守卫
-router.beforeEach((to, from, next) => {
-  const token = localStorage.getItem('access_token')
+router.beforeEach((to) => {
+  const authStore = useAuthStore()
 
-  if (to.meta.requiresAuth && !token) {
-    next('/login')
-    return
+  // store 尚未恢复时（如刷新后守卫先于 App 执行），从 localStorage 兜底恢复
+  if (!authStore.isLoggedIn && localStorage.getItem('access_token')) {
+    authStore.restoreFromStorage()
   }
 
-  if (to.meta.requiresAdmin) {
-    try {
-      const user = JSON.parse(localStorage.getItem('user') || '{}')
-      if (user.role !== 'ADMIN') {
-        next('/home')
-        return
-      }
-    } catch {
-      next('/home')
-      return
-    }
+  if (to.meta.requiresAuth && !authStore.isLoggedIn) {
+    return { path: '/login', query: { redirect: to.fullPath } }
   }
 
-  next()
+  if (to.meta.requiresAdmin && !authStore.isAdmin) {
+    return { path: '/home' }
+  }
+
+  return true
 })
 
 export default router

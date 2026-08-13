@@ -16,7 +16,7 @@
       </el-table-column>
     </el-table>
 
-    <el-dialog v-model="dialogVisible" :title="editingId ? '编辑社团' : '添加社团'" width="600px">
+    <el-dialog v-model="dialogVisible" :title="editingId ? '编辑社团' : '添加社团'" width="min(600px, 90%)">
       <el-form :model="form" label-width="80px">
         <el-form-item label="名称"><el-input v-model="form.name" /></el-form-item>
         <el-form-item label="类别"><el-select v-model="form.category" multiple placeholder="可多选"><el-option v-for="c in cats" :key="c" :label="c" :value="c" /></el-select></el-form-item>
@@ -37,7 +37,6 @@
 <script setup>
 import { ref, onMounted, reactive } from 'vue'
 import { clubApi, adminApi } from '@/api'
-import { ElMessage, ElMessageBox } from 'element-plus'
 
 const loading = ref(false)
 const clubs = ref([])
@@ -75,9 +74,13 @@ async function save() {
 }
 
 async function del(id) {
-  await ElMessageBox.confirm('确定删除？', '提示', { type: 'warning' })
-  await adminApi.deleteClub(id)
-  ElMessage.success('已删除')
-  await fetchAll()
+  try {
+    await ElMessageBox.confirm('确定删除？', '提示', { type: 'warning' })
+  } catch { return /* 用户取消 */ }
+  try {
+    await adminApi.deleteClub(id)
+    ElMessage.success('已删除')
+    await fetchAll()
+  } catch { /* 错误已提示 */ }
 }
 </script>

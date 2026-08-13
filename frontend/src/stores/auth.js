@@ -54,7 +54,10 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
     accessToken.value = ''
     refreshTokenVal.value = ''
-    localStorage.clear()
+    // 只清除认证相关 key，避免误删其他业务数据（如 GPA 缓存 gpa_courses）
+    localStorage.removeItem('access_token')
+    localStorage.removeItem('refresh_token')
+    localStorage.removeItem('user')
   }
 
   return {

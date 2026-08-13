@@ -1,11 +1,11 @@
 <template>
   <div class="club-page">
     <h3>社团导航</h3>
-    <el-tabs v-model="activeCategory" @tab-change="fetchClubs" type="card">
+    <el-tabs v-model="activeCategory" @tab-change="onTabChange" type="card">
       <el-tab-pane label="全部" name="" />
       <el-tab-pane v-for="c in categories" :key="c" :label="c" :name="c" />
     </el-tabs>
-    <el-input v-model="keyword" placeholder="搜索社团..." clearable @clear="fetchClubs" @keyup.enter="fetchClubs" style="margin-bottom:12px" />
+    <el-input v-model="keyword" placeholder="搜索社团..." clearable @clear="onKeywordSearch" @keyup.enter="onKeywordSearch" style="margin-bottom:12px" />
 
     <div v-loading="loading">
       <el-card v-for="c in clubs" :key="c.id" class="club-card" @click="$router.push(`/clubs/${c.id}`)">
@@ -43,6 +43,17 @@ const keyword = ref('')
 const categories = ['学生组织', '学术科技', '志愿公益', '文体艺术', '创新创业', '其他']
 
 onMounted(() => fetchClubs())
+
+// 切换分类/关键词搜索时重置页码
+function onTabChange() {
+  page.value = 1
+  fetchClubs()
+}
+
+function onKeywordSearch() {
+  page.value = 1
+  fetchClubs()
+}
 
 async function fetchClubs() {
   loading.value = true

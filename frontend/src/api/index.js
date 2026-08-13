@@ -72,6 +72,20 @@ export const adminApi = {
   // 纠错
   getCorrections: (params) => request.get('/admin/corrections', { params }),
   resolveCorrection: (id) => request.put(`/admin/corrections/${id}/resolve`),
+  // 举报审核
+  getReports: (params) => request.get('/admin/reports', { params }),
+  resolveReport: (id, action) => request.post(`/admin/reports/${id}/resolve`, { action }),
+  // 攻略
+  getGuides: (params) => request.get('/admin/guides', { params }),
+  createGuide: (data) => request.post('/admin/guides', data),
+  updateGuide: (id, data) => request.put(`/admin/guides/${id}`, data),
+  deleteGuide: (id) => request.delete(`/admin/guides/${id}`),
+  // 任务
+  getTasks: () => request.get('/admin/tasks'),
+  createTask: (data) => request.post('/admin/tasks', data),
+  updateTask: (id, data) => request.put(`/admin/tasks/${id}`, data),
+  deleteTask: (id) => request.delete(`/admin/tasks/${id}`),
   // 用户
   getUsers: () => request.get('/admin/users'),
+  updateUserStatus: (id, status) => request.put(`/admin/users/${id}/status`, { status }),
 }

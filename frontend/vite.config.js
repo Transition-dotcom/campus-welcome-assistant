@@ -32,8 +32,9 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
+        // 注意：不要手动把 element-plus 打进单一 chunk，否则会绕过 unplugin 的按需引入
+        // 导致全量组件+样式打包。仅对 vue 全家桶做 vendor 分包。
         manualChunks: {
-          'element-plus': ['element-plus'],
           'vue-vendor': ['vue', 'vue-router', 'pinia'],
         },
       },

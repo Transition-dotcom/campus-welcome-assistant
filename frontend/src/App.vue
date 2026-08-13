@@ -67,17 +67,22 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { ElMessage } from 'element-plus'
 import { School, HomeFilled, Notebook, Flag, LocationFilled, Document, User } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
-const isMobile = computed(() => window.innerWidth < 768)
+// 响应式移动端判断：监听窗口尺寸变化，避免 computed 无依赖不更新
+const isMobile = ref(window.innerWidth < 768)
+function updateIsMobile() {
+  isMobile.value = window.innerWidth < 768
+}
+onMounted(() => window.addEventListener('resize', updateIsMobile))
+onBeforeUnmount(() => window.removeEventListener('resize', updateIsMobile))
 const activeMenu = computed(() => route.path)
 const showBottomNav = computed(() => {
   const hiddenPaths = ['/login', '/register']

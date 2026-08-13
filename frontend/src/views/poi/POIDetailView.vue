@@ -43,7 +43,6 @@ import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { poiApi } from '@/api'
-import { ElMessage } from 'element-plus'
 
 const route = useRoute()
 const authStore = useAuthStore()

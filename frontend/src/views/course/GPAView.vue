@@ -85,8 +85,13 @@ function toGpa(row) {
   return (score - 50) / 10
 }
 
+// 仅统计有效行：学分 > 0，且成绩已填写（百分制 score > 0；五级制已选择等级）
 const validCourses = computed(() =>
-  courses.value.filter(c => c.credit > 0 && getScore(c) >= 0)
+  courses.value.filter(c => {
+    if (c.credit <= 0) return false
+    if (scoreType.value === 'percent') return c.score > 0
+    return !!c.fiveLevel
+  })
 )
 
 const totalCredits = computed(() =>
@@ -110,12 +115,29 @@ const gpa = computed(() => {
 function addRow() { courses.value.push({ name: '', credit: 0, score: 0, fiveLevel: '' }) }
 function removeRow(i) { if (courses.value.length > 1) courses.value.splice(i, 1) }
 
-// 本地存储
+// 本地存储：恢复时归一化补默认字段，防止脏数据/旧版本数据导致渲染异常
+function normalizeRow(item) {
+  const credit = Number(item?.credit)
+  const score = Number(item?.score)
+  return {
+    name: typeof item?.name === 'string' ? item.name : '',
+    credit: Number.isFinite(credit) && credit > 0 ? credit : 0,
+    score: Number.isFinite(score) && score > 0 && score <= 100 ? score : 0,
+    fiveLevel: typeof item?.fiveLevel === 'string' ? item.fiveLevel : '',
+  }
+}
+
 onMounted(() => {
   try {
     const saved = localStorage.getItem('gpa_courses')
-    if (saved) courses.value = JSON.parse(saved)
-  } catch {}
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      if (Array.isArray(parsed)) {
+        const normalized = parsed.map(normalizeRow)
+        if (normalized.length) courses.value = normalized
+      }
+    }
+  } catch { /* 数据损坏时忽略，保留默认空行 */ }
 })
 watch(courses, (val) => localStorage.setItem('gpa_courses', JSON.stringify(val)), { deep: true })
 </script>

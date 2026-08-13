@@ -18,7 +18,7 @@
       </el-table-column>
     </el-table>
 
-    <el-dialog v-model="dialogVisible" :title="editingId ? '编辑课程' : '添加课程'" width="500px">
+    <el-dialog v-model="dialogVisible" :title="editingId ? '编辑课程' : '添加课程'" width="min(500px, 90%)">
       <el-form :model="form" label-width="80px">
         <el-form-item label="名称"><el-input v-model="form.name" /></el-form-item>
         <el-form-item label="教师"><el-input v-model="form.teacher" /></el-form-item>
@@ -37,7 +37,6 @@
 <script setup>
 import { ref, onMounted, reactive } from 'vue'
 import { courseApi, adminApi } from '@/api'
-import { ElMessage, ElMessageBox } from 'element-plus'
 
 const loading = ref(false)
 const courses = ref([])
@@ -82,9 +81,13 @@ async function save() {
 }
 
 async function del(id) {
-  await ElMessageBox.confirm('确定删除？', '提示', { type: 'warning' })
-  await adminApi.deleteCourse(id)
-  ElMessage.success('已删除')
-  await fetchAll()
+  try {
+    await ElMessageBox.confirm('确定删除？', '提示', { type: 'warning' })
+  } catch { return /* 用户取消 */ }
+  try {
+    await adminApi.deleteCourse(id)
+    ElMessage.success('已删除')
+    await fetchAll()
+  } catch { /* 错误已提示 */ }
 }
 </script>

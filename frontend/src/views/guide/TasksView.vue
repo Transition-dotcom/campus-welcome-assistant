@@ -27,7 +27,7 @@
               <p>{{ t.description }}</p>
             </div>
           </div>
-          <el-button v-if="!t.is_checked" type="success" size="small" @click="doCheckin(t)">打卡</el-button>
+          <el-button v-if="!t.is_checked" type="success" size="small" :loading="!!checkinPending[t.id]" @click="doCheckin(t)">打卡</el-button>
           <el-tag v-else type="success" size="small">已完成</el-tag>
         </div>
       </el-card>
@@ -37,14 +37,15 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { guideApi } from '@/api'
-import { ElMessage } from 'element-plus'
 import { Trophy } from '@element-plus/icons-vue'
 
 const loading = ref(false)
 const tasks = ref([])
 const badge = ref(null)
+// 每任务的打卡请求锁，防止双击重复提交
+const checkinPending = reactive({})
 
 const completedCount = computed(() => tasks.value.filter(t => t.is_checked).length)
 const taskPercent = computed(() => tasks.value.length ? Math.round((completedCount.value / tasks.value.length) * 100) : 0)
@@ -65,12 +66,15 @@ onMounted(async () => {
 })
 
 async function doCheckin(t) {
+  if (checkinPending[t.id]) return
+  checkinPending[t.id] = true
   try {
     const result = await guideApi.checkinTask(t.id)
     t.is_checked = true
     badge.value = result.badge
     ElMessage.success('打卡成功！')
   } catch { /* ignore */ }
+  finally { checkinPending[t.id] = false }
 }
 </script>
 

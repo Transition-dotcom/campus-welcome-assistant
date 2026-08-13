@@ -7,6 +7,9 @@
           <el-menu-item index="/admin/courses"><el-icon><Notebook /></el-icon>课程管理</el-menu-item>
           <el-menu-item index="/admin/clubs"><el-icon><Flag /></el-icon>社团管理</el-menu-item>
           <el-menu-item index="/admin/pois"><el-icon><LocationFilled /></el-icon>地标管理</el-menu-item>
+          <el-menu-item index="/admin/guides"><el-icon><Reading /></el-icon>攻略管理</el-menu-item>
+          <el-menu-item index="/admin/tasks"><el-icon><List /></el-icon>任务管理</el-menu-item>
+          <el-menu-item index="/admin/reports"><el-icon><ChatLineSquare /></el-icon>评价审核</el-menu-item>
           <el-menu-item index="/admin/corrections"><el-icon><Warning /></el-icon>纠错处理</el-menu-item>
           <el-menu-item index="/admin/users"><el-icon><User /></el-icon>用户管理</el-menu-item>
           <el-menu-item index="/home"><el-icon><HomeFilled /></el-icon>返回前台</el-menu-item>
@@ -21,7 +24,7 @@
 
 <script setup>
 import { useRoute } from 'vue-router'
-import { Notebook, Flag, LocationFilled, Warning, User, HomeFilled } from '@element-plus/icons-vue'
+import { Notebook, Flag, LocationFilled, Warning, User, HomeFilled, Reading, List, ChatLineSquare } from '@element-plus/icons-vue'
 const route = useRoute()
 </script>
 

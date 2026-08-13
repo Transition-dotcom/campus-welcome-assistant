@@ -27,7 +27,6 @@
 import { ref, onMounted, reactive } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { userApi } from '@/api'
-import { ElMessage } from 'element-plus'
 
 const authStore = useAuthStore()
 const editing = ref(false)

@@ -25,7 +25,7 @@
 
     <!-- 评价列表 -->
     <div style="margin-top: 12px">
-      <el-radio-group v-model="sort" @change="fetchReviews" size="small">
+      <el-radio-group v-model="sort" @change="onSortChange" size="small">
         <el-radio-button value="time">最新</el-radio-button>
         <el-radio-button value="like">最热</el-radio-button>
       </el-radio-group>
@@ -41,13 +41,15 @@
       </div>
       <p class="review-text">{{ r.content }}</p>
       <div class="review-actions">
-        <el-button :type="r.is_liked ? 'primary' : 'default'" size="small" text @click="toggleLike(r)">
+        <el-button :type="r.is_liked ? 'primary' : 'default'" size="small" text
+          :disabled="!!likePending[r.id]" @click="toggleLike(r)">
           <el-icon><CaretTop /></el-icon> {{ r.like_count }}
         </el-button>
         <el-button size="small" text @click="showComments(r)">
           <el-icon><ChatDotRound /></el-icon> 评论
         </el-button>
-        <el-button :type="r.is_favorited ? 'warning' : 'default'" size="small" text @click="toggleFav(r)">
+        <el-button :type="r.is_favorited ? 'warning' : 'default'" size="small" text
+          :disabled="!!favPending[r.id]" @click="toggleFav(r)">
           <el-icon><Star /></el-icon> {{ r.is_favorited ? '已收藏' : '收藏' }}
         </el-button>
         <el-button size="small" text type="danger" @click="reportReview(r)">举报</el-button>
@@ -65,6 +67,11 @@
       </div>
     </el-card>
 
+    <!-- 加载更多 -->
+    <div v-if="reviews.length < reviewsTotal" style="text-align:center;margin-top:16px">
+      <el-button :loading="loadingMore" @click="loadMoreReviews">加载更多</el-button>
+    </div>
+
     <el-empty v-if="!loading && reviews.length === 0" description="暂无评价，来写第一条吧" />
   </div>
 </template>
@@ -74,7 +81,6 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { courseApi } from '@/api'
-import { ElMessage, ElMessageBox } from 'element-plus'
 import { CaretTop, ChatDotRound, Star } from '@element-plus/icons-vue'
 
 const route = useRoute()
@@ -84,25 +90,58 @@ const submitting = ref(false)
 const course = ref(null)
 const reviews = ref([])
 const sort = ref('time')
+const reviewsPage = ref(1)
+const reviewsTotal = ref(0)
+const loadingMore = ref(false)
+// 点赞/收藏请求锁（按 review id），防止双击重复 toggle
+const likePending = reactive({})
+const favPending = reactive({})
 const reviewForm = reactive({ difficulty_rating: 0, score_rating: 0, content: '', is_anonymous: false })
+
+function decorateReviews(items) {
+  return items.map(item => ({ ...item, showComments: false, commentText: '', comments: [] }))
+}
 
 onMounted(async () => {
   const id = route.params.id
   loading.value = true
   try {
-    const [c, r] = await Promise.all([
-      courseApi.getDetail(id),
-      courseApi.getReviews(id, { sort: sort.value }),
-    ])
+    const c = await courseApi.getDetail(id)
     course.value = c
-    reviews.value = r.items.map(item => ({ ...item, showComments: false, commentText: '', comments: [] }))
+    await fetchReviews(true)
   } catch { /* 错误已处理 */ }
   finally { loading.value = false }
 })
 
-async function fetchReviews() {
-  const data = await courseApi.getReviews(route.params.id, { sort: sort.value })
-  reviews.value = data.items.map(item => ({ ...item, showComments: false, commentText: '', comments: [] }))
+// reset=true 时重新从第 1 页加载；false 时追加下一页
+async function fetchReviews(reset = true) {
+  if (reset) reviewsPage.value = 1
+  const data = await courseApi.getReviews(route.params.id, {
+    sort: sort.value,
+    page: reviewsPage.value,
+    page_size: 10,
+  })
+  const mapped = decorateReviews(data.items || [])
+  reviews.value = reset ? mapped : [...reviews.value, ...mapped]
+  reviewsTotal.value = data.total || reviews.value.length
+}
+
+function onSortChange() {
+  fetchReviews(true)
+}
+
+async function loadMoreReviews() {
+  if (loadingMore.value) return
+  loadingMore.value = true
+  try {
+    reviewsPage.value += 1
+    await fetchReviews(false)
+  } catch {
+    // 失败时回退页码，用户可重试
+    reviewsPage.value -= 1
+  } finally {
+    loadingMore.value = false
+  }
 }
 
 async function submitReview() {
@@ -125,15 +164,25 @@ async function submitReview() {
 
 async function toggleLike(r) {
   if (!authStore.isLoggedIn) { ElMessage.warning('请先登录'); return }
-  const result = await courseApi.toggleLike(r.id)
-  r.is_liked = result.is_liked
-  r.like_count = result.like_count
+  if (likePending[r.id]) return
+  likePending[r.id] = true
+  try {
+    const result = await courseApi.toggleLike(r.id)
+    r.is_liked = result.is_liked
+    r.like_count = result.like_count
+  } catch { /* 错误已提示 */ }
+  finally { likePending[r.id] = false }
 }
 
 async function toggleFav(r) {
   if (!authStore.isLoggedIn) { ElMessage.warning('请先登录'); return }
-  const result = await courseApi.toggleFavorite(r.id)
-  r.is_favorited = result.is_favorited
+  if (favPending[r.id]) return
+  favPending[r.id] = true
+  try {
+    const result = await courseApi.toggleFavorite(r.id)
+    r.is_favorited = result.is_favorited
+  } catch { /* 错误已提示 */ }
+  finally { favPending[r.id] = false }
 }
 
 async function showComments(r) {
@@ -154,8 +203,12 @@ async function submitComment(r) {
 
 function reportReview(r) {
   if (!authStore.isLoggedIn) { ElMessage.warning('请先登录'); return }
-  ElMessageBox.prompt('请输入举报原因', '举报评价').then(async ({ value }) => {
-    await courseApi.reportReview(r.id, { reason: value })
+  ElMessageBox.prompt('请输入举报原因（至少5个字）', '举报评价', {
+    inputValidator: (val) => (val && val.trim().length >= 5) || '举报原因至少5个字',
+  }).then(async ({ value }) => {
+    const reason = value.trim()
+    if (reason.length < 5) { ElMessage.warning('举报原因至少5个字'); return }
+    await courseApi.reportReview(r.id, { reason })
     ElMessage.success('举报已提交')
   }).catch(() => {})
 }
