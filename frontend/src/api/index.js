@@ -50,7 +50,7 @@ export const guideApi = {
   checkinTask: (taskId) => request.post(`/tasks/${taskId}/checkin`),
   getSafetyTips: (params) => request.get('/safety-tips', { params }),
   getDashboard: () => request.get('/dashboard'),
-  search: (keyword, signal) => request.get('/search', { params: { keyword }, signal }),
+  search: (keyword, page = 1, pageSize = 20, signal) => request.get('/search', { params: { keyword, page, page_size: pageSize }, signal }),
 }
 
 // ──── 管理后台 ────

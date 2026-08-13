@@ -194,8 +194,8 @@ def _expand_keywords(keyword: str) -> list[str]:
     return terms
 
 
-def search_all(db: Session, keyword: str, limit: int = 20) -> list[SearchResult]:
-    """跨模块搜索。支持常见课程缩写（如「高数」）扩展匹配全称。"""
+def search_all(db: Session, keyword: str, page: int = 1, page_size: int = 20) -> PageResponse:
+    """跨模块搜索。支持常见课程缩写（如「高数」）扩展匹配全称。返回分页结果。"""
     from sqlalchemy import or_
 
     from app.models.course import Course
@@ -204,16 +204,15 @@ def search_all(db: Session, keyword: str, limit: int = 20) -> list[SearchResult]
     from app.models.guide import Guide
 
     if not keyword or len(keyword) < 2:
-        return []
+        return PageResponse(items=[], total=0, page=page, page_size=page_size, total_pages=0)
 
     terms = _expand_keywords(keyword)
     results = []
 
-    # 搜课程（按 id 去重，多个检索词可能命中同一条）
+    # 搜课程
     courses = (
         db.query(Course)
         .filter(or_(*[Course.name.like(f"%{t}%") for t in terms]), Course.status == 1)
-        .limit(limit)
         .all()
     )
     for c in courses:
@@ -223,7 +222,6 @@ def search_all(db: Session, keyword: str, limit: int = 20) -> list[SearchResult]
     clubs = (
         db.query(Club)
         .filter(or_(*[Club.name.like(f"%{t}%") for t in terms]), Club.status == 1)
-        .limit(limit)
         .all()
     )
     for c in clubs:
@@ -233,7 +231,6 @@ def search_all(db: Session, keyword: str, limit: int = 20) -> list[SearchResult]
     pois = (
         db.query(POI)
         .filter(or_(*[POI.name.like(f"%{t}%") for t in terms]))
-        .limit(limit)
         .all()
     )
     for p in pois:
@@ -243,10 +240,15 @@ def search_all(db: Session, keyword: str, limit: int = 20) -> list[SearchResult]
     guides = (
         db.query(Guide)
         .filter(or_(*[Guide.title.like(f"%{t}%") for t in terms]))
-        .limit(limit)
         .all()
     )
     for g in guides:
         results.append(SearchResult(type="guide", id=g.id, title=g.title))
 
-    return results[:limit]
+    total = len(results)
+    total_pages = (total + page_size - 1) // page_size
+    start = (page - 1) * page_size
+    end = start + page_size
+    page_items = results[start:end]
+
+    return PageResponse(items=page_items, total=total, page=page, page_size=page_size, total_pages=total_pages)

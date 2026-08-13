@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.middleware.auth import get_current_user, get_optional_user
 from app.schemas.guide import GuideResponse, FreshmanTaskResponse, SafetyTipResponse, DashboardResponse, SearchResult
+from app.schemas.common import PageResponse
 from app.services import guide_service
 
 router = APIRouter(prefix="/api", tags=["攻略 & 首页"])
@@ -73,7 +74,12 @@ def dashboard(
 
 # ──── 全局搜索 ────
 
-@router.get("/search", response_model=list[SearchResult], summary="全局搜索")
-def search(keyword: str = Query(..., min_length=2), db: Session = Depends(get_db)):
+@router.get("/search", response_model=PageResponse, summary="全局搜索")
+def search(
+    keyword: str = Query(..., min_length=2, max_length=100),
+    page: int = Query(1, ge=1, description="页码"),
+    page_size: int = Query(20, ge=1, le=100, description="每页条数"),
+    db: Session = Depends(get_db),
+):
     """跨模块搜索课程、社团、地标、攻略。"""
-    return guide_service.search_all(db, keyword)
+    return guide_service.search_all(db, keyword, page, page_size)

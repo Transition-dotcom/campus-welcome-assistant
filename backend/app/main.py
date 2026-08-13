@@ -3,10 +3,12 @@ FastAPI 应用入口。启动：uvicorn app.main:app --reload --port 8080
 """
 import secrets
 import warnings
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 from app.config import settings
-from app.database import engine, Base
+from app.database import engine, Base, get_db
 from app.models import *  # noqa: 确保所有模型被导入，Base.metadata 包含全部表
 from app.routers import user, course, club, poi, guide, admin
 
@@ -33,8 +35,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
 )
 
 # 注册路由
@@ -49,4 +51,14 @@ app.include_router(admin.router)
 @app.get("/", tags=["系统"])
 def root():
     """健康检查。"""
-    return {"message": "大学萌新领航站 API 运行中", "version": "2.0.0", "docs": "/docs"}
+    return {"message": "大学萌新领航站 API 运行中", "version": "2.1.0", "docs": "/docs"}
+
+
+@app.get("/health", tags=["系统"])
+def health_check(db: Session = Depends(get_db)):
+    """详细健康检查：验证数据库连接。"""
+    try:
+        db.execute(text("SELECT 1"))
+        return {"status": "ok", "database": "connected", "version": "2.1.0"}
+    except Exception as e:
+        return {"status": "error", "database": "disconnected", "detail": str(e)}

@@ -26,7 +26,8 @@
     <!-- 结果列表（按类型分组） -->
     <template v-else-if="results.length">
       <div class="result-summary">
-        共找到 <b>{{ results.length }}</b> 条与「{{ keyword.trim() }}」相关的结果
+        共找到 <b>{{ total }}</b> 条与「{{ keyword.trim() }}」相关的结果
+        <span v-if="totalPages > 1">，第 {{ page }} / {{ totalPages }} 页</span>
       </div>
       <el-card v-for="group in grouped" :key="group.type" class="group-card" shadow="never">
         <template #header>
@@ -42,6 +43,17 @@
           <el-icon class="result-arrow"><ArrowRight /></el-icon>
         </div>
       </el-card>
+
+      <!-- 分页 -->
+      <el-pagination
+        v-if="totalPages > 1"
+        v-model:current-page="page"
+        :page-size="pageSize"
+        :total="total"
+        layout="prev, pager, next"
+        class="pagination"
+        @current-change="onPageChange"
+      />
     </template>
 
     <!-- 无结果 / 未搜索 -->
@@ -64,6 +76,11 @@ const keyword = ref('')
 const results = ref([])
 const loading = ref(false)
 const searched = ref(false)
+const page = ref(1)
+const pageSize = ref(20)
+const total = ref(0)
+const totalPages = ref(0)
+let abortController = null
 
 const typeMeta = {
   course: { label: '课程', tag: '', icon: 'Notebook', color: '#409eff', path: '/courses' },
@@ -81,43 +98,67 @@ const grouped = computed(() => {
   return groups
 })
 
-// 输入框变化 → 防抖搜索
+// 输入框变化 → 防抖搜索（重置到第1页）
 let searchTimer = null
 watch(keyword, (val) => {
   clearTimeout(searchTimer)
   const kw = val.trim()
   if (kw.length < 2) {
-    results.value = []
-    searched.value = false
+    clearResults()
     return
   }
+  page.value = 1
   searchTimer = setTimeout(() => {
-    runSearch(kw)
-    syncUrl(kw)
+    runSearch(kw, 1)
+    syncUrl(kw, 1)
   }, 400)
 })
 
-// URL 中的 keyword 变化（外部跳转进入 / 刷新）时同步到输入框并触发搜索
+// URL 中的 keyword / page 变化时同步并触发搜索
 watch(
-  () => route.query.keyword,
-  (kw) => {
-    const val = kw || ''
-    if (keyword.value !== val) keyword.value = val
+  () => route.query,
+  (query) => {
+    const kw = query.keyword || ''
+    const p = Number(query.page) || 1
+    if (keyword.value !== kw) keyword.value = kw
+    if (kw.length >= 2) {
+      runSearch(kw, p)
+    }
   },
   { immediate: true }
 )
 
-async function runSearch(kw = keyword.value.trim()) {
+async function runSearch(kw = keyword.value.trim(), targetPage = page.value) {
   if (kw.length < 2) return
+  // 取消上一次的请求，防止结果错乱
+  if (abortController) abortController.abort()
+  abortController = new AbortController()
+
   loading.value = true
   try {
-    results.value = await guideApi.search(kw)
+    const res = await guideApi.search(kw, targetPage, pageSize.value, abortController.signal)
+    results.value = res.items || []
+    total.value = res.total || 0
+    totalPages.value = res.total_pages || 0
+    page.value = targetPage
     searched.value = true
-  } catch {
+  } catch (err) {
+    if (err.name === 'AbortError' || err.code === 'ERR_CANCELED') return
     results.value = []
+    total.value = 0
+    totalPages.value = 0
   } finally {
     loading.value = false
+    abortController = null
   }
+}
+
+function onPageChange(newPage) {
+  const kw = keyword.value.trim()
+  if (kw.length < 2) return
+  runSearch(kw, newPage)
+  syncUrl(kw, newPage)
+  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 function handleSearch() {
@@ -127,13 +168,16 @@ function handleSearch() {
     ElMessage.warning('请输入至少 2 个字符')
     return
   }
-  runSearch(kw)
-  syncUrl(kw)
+  page.value = 1
+  runSearch(kw, 1)
+  syncUrl(kw, 1)
 }
 
-function syncUrl(kw) {
-  if (route.query.keyword !== kw) {
-    router.replace({ path: '/search', query: { keyword: kw } })
+function syncUrl(kw, targetPage = page.value) {
+  const query = { keyword: kw }
+  if (targetPage > 1) query.page = targetPage
+  if (route.query.keyword !== kw || Number(route.query.page || 1) !== targetPage) {
+    router.replace({ path: '/search', query })
   }
 }
 
@@ -141,6 +185,9 @@ function clearResults() {
   clearTimeout(searchTimer)
   results.value = []
   searched.value = false
+  page.value = 1
+  total.value = 0
+  totalPages.value = 0
 }
 
 function goTo(item) {
@@ -172,4 +219,5 @@ function goTo(item) {
 .result-item:hover .result-title { color: #409eff; }
 .result-title { font-size: 14px; color: #303133; flex: 1; }
 .result-arrow { color: #c0c4cc; }
+.pagination { justify-content: center; margin-top: 16px; }
 </style>

@@ -15,8 +15,8 @@ class RegisterRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    nickname: str = Field(..., description="昵称")
-    password: str = Field(..., description="密码")
+    nickname: str = Field(..., min_length=2, max_length=50, description="昵称")
+    password: str = Field(..., min_length=6, max_length=100, description="密码")
 
 
 class RefreshTokenRequest(BaseModel):
@@ -25,10 +25,10 @@ class RefreshTokenRequest(BaseModel):
 
 class UpdateProfileRequest(BaseModel):
     nickname: str | None = Field(None, min_length=2, max_length=50)
-    college: str | None = None
-    major: str | None = None
-    grade: str | None = None
-    avatar_url: str | None = None
+    college: str | None = Field(None, max_length=100)
+    major: str | None = Field(None, max_length=100)
+    grade: str | None = Field(None, max_length=20)
+    avatar_url: str | None = Field(None, max_length=500)
 
 
 # ──── 响应体 ────
